@@ -5,6 +5,7 @@ import salonBeautyImg from "@/assets/salon-beauty.jpg";
 import barbershopImg from "@/assets/barbershop.jpg";
 import spaWellnessImg from "@/assets/spa-wellness.jpg";
 import nailSalonImg from "@/assets/nail-salon.jpg";
+import heroBackgroundImg from "@/assets/hero-background.jpg";
 
 const Index = () => {
   const businesses = [
@@ -59,8 +60,21 @@ const Index = () => {
       <Header />
       
       {/* Hero Section */}
-      <section className="gradient-hero py-20 px-4">
-        <div className="container mx-auto text-center">
+      <section className="relative py-20 px-4 overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div 
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url(${heroBackgroundImg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(4px)',
+          }}
+        />
+        <div className="absolute inset-0 z-0 bg-primary/85" />
+        
+        {/* Content */}
+        <div className="container mx-auto text-center relative z-10">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
             Agende Serviços com Facilidade
           </h2>
