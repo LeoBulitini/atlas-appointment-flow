@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ClientDashboard from "./pages/ClientDashboard";
 import BusinessDashboard from "./pages/BusinessDashboard";
+import BusinessSetup from "./pages/BusinessSetup";
+import Booking from "./pages/Booking";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -21,6 +23,15 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/booking/:businessId" element={<Booking />} />
+          <Route
+            path="/business/setup"
+            element={
+              <ProtectedRoute requiredUserType="business">
+                <BusinessSetup />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/dashboard/client"
             element={

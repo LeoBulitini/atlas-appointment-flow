@@ -1,46 +1,38 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, MapPin, Clock } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BusinessCardProps {
   id: string;
   name: string;
   category: string;
-  rating: number;
-  reviewCount: number;
   address: string;
   image: string;
   priceRange: string;
-  openNow: boolean;
 }
 
 const BusinessCard = ({
+  id,
   name,
   category,
-  rating,
-  reviewCount,
   address,
   image,
   priceRange,
-  openNow,
 }: BusinessCardProps) => {
+  const navigate = useNavigate();
   return (
-    <Card className="group overflow-hidden transition-smooth hover:shadow-elegant cursor-pointer">
+    <Card 
+      className="group overflow-hidden transition-smooth hover:shadow-elegant cursor-pointer"
+      onClick={() => navigate(`/booking/${id}`)}
+    >
       <div className="relative h-48 overflow-hidden">
         <img
           src={image}
           alt={name}
           className="h-full w-full object-cover transition-smooth group-hover:scale-110"
         />
-        <div className="absolute top-3 right-3">
-          {openNow && (
-            <Badge className="bg-green-500 text-white shadow-md">
-              <Clock className="mr-1 h-3 w-3" />
-              Aberto
-            </Badge>
-          )}
-        </div>
       </div>
       
       <CardContent className="p-4">
@@ -52,14 +44,6 @@ const BusinessCard = ({
             <Badge variant="secondary">{category}</Badge>
             <span>{priceRange}</span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-1 mb-3">
-          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          <span className="font-semibold">{rating}</span>
-          <span className="text-sm text-muted-foreground">
-            ({reviewCount} avaliações)
-          </span>
         </div>
 
         <div className="flex items-start gap-2 mb-4 text-sm text-muted-foreground">

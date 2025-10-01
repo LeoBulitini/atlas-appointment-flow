@@ -36,6 +36,41 @@ const BusinessDashboard = () => {
 
   useEffect(() => {
     fetchBusinessData();
+
+    const appointmentsChannel = supabase
+      .channel("business-appointments-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+        },
+        () => {
+          fetchBusinessData();
+        }
+      )
+      .subscribe();
+
+    const servicesChannel = supabase
+      .channel("services-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "services",
+        },
+        () => {
+          fetchBusinessData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appointmentsChannel);
+      supabase.removeChannel(servicesChannel);
+    };
   }, []);
 
   const fetchBusinessData = async () => {

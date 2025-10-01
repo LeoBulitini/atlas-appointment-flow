@@ -1,59 +1,77 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import SearchBar from "@/components/SearchBar";
 import BusinessCard from "@/components/BusinessCard";
+import heroBackgroundImg from "@/assets/hero-background.jpg";
 import salonBeautyImg from "@/assets/salon-beauty.jpg";
 import barbershopImg from "@/assets/barbershop.jpg";
 import spaWellnessImg from "@/assets/spa-wellness.jpg";
 import nailSalonImg from "@/assets/nail-salon.jpg";
-import heroBackgroundImg from "@/assets/hero-background.jpg";
+
+interface Business {
+  id: string;
+  name: string;
+  category: string;
+  address: string;
+  city: string;
+  state: string;
+  price_range: string;
+  is_active: boolean;
+}
 
 const Index = () => {
-  const businesses = [
-    {
-      id: "1",
-      name: "Bella Vista Salon",
-      category: "Salão de Beleza",
-      rating: 4.8,
-      reviewCount: 127,
-      address: "Av. Paulista, 1234 - São Paulo, SP",
-      image: salonBeautyImg,
-      priceRange: "$$",
-      openNow: true,
-    },
-    {
-      id: "2",
-      name: "The Gentleman's Cut",
-      category: "Barbearia",
-      rating: 4.9,
-      reviewCount: 203,
-      address: "Rua Augusta, 567 - São Paulo, SP",
-      image: barbershopImg,
-      priceRange: "$$$",
-      openNow: true,
-    },
-    {
-      id: "3",
-      name: "Zen Spa & Wellness",
-      category: "Spa & Massagem",
-      rating: 4.7,
-      reviewCount: 89,
-      address: "Rua Oscar Freire, 890 - São Paulo, SP",
-      image: spaWellnessImg,
-      priceRange: "$$$$",
-      openNow: false,
-    },
-    {
-      id: "4",
-      name: "Nails & Beauty Studio",
-      category: "Estética & Unhas",
-      rating: 4.6,
-      reviewCount: 156,
-      address: "Av. Faria Lima, 2345 - São Paulo, SP",
-      image: nailSalonImg,
-      priceRange: "$$",
-      openNow: true,
-    },
-  ];
+  const navigate = useNavigate();
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBusinesses();
+
+    const channel = supabase
+      .channel("businesses-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "businesses",
+        },
+        () => {
+          fetchBusinesses();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchBusinesses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("is_active", true)
+        .limit(8);
+
+      if (error) throw error;
+      setBusinesses(data || []);
+    } catch (error) {
+      console.error("Error fetching businesses:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const categoryImages: Record<string, string> = {
+    "Salão de Beleza": salonBeautyImg,
+    "Barbearia": barbershopImg,
+    "Spa & Massagem": spaWellnessImg,
+    "Estética & Unhas": nailSalonImg,
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,9 +116,27 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {businesses.map((business) => (
-              <BusinessCard key={business.id} {...business} />
-            ))}
+            {loading ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">Carregando estabelecimentos...</p>
+              </div>
+            ) : businesses.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">Nenhum estabelecimento cadastrado ainda</p>
+              </div>
+            ) : (
+              businesses.map((business) => (
+                <BusinessCard
+                  key={business.id}
+                  id={business.id}
+                  name={business.name}
+                  category={business.category}
+                  address={`${business.address}, ${business.city} - ${business.state}`}
+                  image={categoryImages[business.category] || salonBeautyImg}
+                  priceRange={business.price_range}
+                />
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -145,10 +181,16 @@ const Index = () => {
               Cadastre seu negócio no ATLAS e comece a receber agendamentos hoje mesmo
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-primary px-8 py-3 rounded-lg font-semibold hover:scale-105 transition-smooth shadow-lg">
+              <button 
+                onClick={() => navigate("/business/setup")}
+                className="bg-white text-primary px-8 py-3 rounded-lg font-semibold hover:scale-105 transition-smooth shadow-lg"
+              >
                 Cadastrar Empresa
               </button>
-              <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary transition-smooth">
+              <button 
+                onClick={() => navigate("/auth")}
+                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary transition-smooth"
+              >
                 Saiba Mais
               </button>
             </div>

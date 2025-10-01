@@ -35,6 +35,25 @@ const ClientDashboard = () => {
   useEffect(() => {
     fetchUserData();
     fetchAppointments();
+
+    const channel = supabase
+      .channel("appointments-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+        },
+        () => {
+          fetchAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchUserData = async () => {
