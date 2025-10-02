@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, MapPin, Phone, Mail, Clock, DollarSign } from "lucide-react";
-import { format, parse, addMinutes, isBefore, isToday } from "date-fns";
+import { Loader2, MapPin, Phone, Mail, Clock, DollarSign, MessageCircle } from "lucide-react";
+import { format, parse, addMinutes, isBefore, isToday, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatPhoneNumber } from "@/lib/phone-utils";
 
 interface Service {
   id: string;
@@ -446,8 +447,23 @@ const Booking = () => {
                   
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{business.phone}</span>
+                    <span>{formatPhoneNumber(business.phone)}</span>
                   </div>
+                  
+                  {business.phone && (
+                    <Button
+                      variant="outline"
+                      className="w-full mt-2"
+                      onClick={() => {
+                        const phoneNumber = business.phone.replace(/\D/g, '');
+                        const message = encodeURIComponent(`Olá! Gostaria de saber mais sobre os serviços do ${business.name}.`);
+                        window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Conversar no WhatsApp
+                    </Button>
+                  )}
                   
                   {business.email && (
                     <div className="flex items-center gap-2">
@@ -602,7 +618,7 @@ const Booking = () => {
                       selected={selectedDate}
                       onSelect={setSelectedDate}
                       disabled={(date) => {
-                        if (date < new Date()) return true;
+                        if (date < startOfDay(new Date())) return true;
                         if (!business?.opening_hours) return false;
                         
                         const dayName = format(date, 'EEEE', { locale: ptBR }).toLowerCase();

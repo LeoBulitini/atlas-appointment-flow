@@ -25,6 +25,7 @@ interface Business {
 const Index = () => {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,16 +56,48 @@ const Index = () => {
       const { data, error } = await supabase
         .from("businesses")
         .select("*")
-        .eq("is_active", true)
-        .limit(8);
+        .eq("is_active", true);
 
       if (error) throw error;
       setBusinesses(data || []);
+      setFilteredBusinesses(data || []);
     } catch (error) {
       console.error("Error fetching businesses:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (searchTerm: string, location: string, category: string) => {
+    let filtered = [...businesses];
+
+    // Filter by search term (name or category)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (b) =>
+          b.name.toLowerCase().includes(term) ||
+          b.category.toLowerCase().includes(term)
+      );
+    }
+
+    // Filter by location
+    if (location) {
+      const loc = location.toLowerCase();
+      filtered = filtered.filter(
+        (b) =>
+          b.city.toLowerCase().includes(loc) ||
+          b.state.toLowerCase().includes(loc) ||
+          b.address.toLowerCase().includes(loc)
+      );
+    }
+
+    // Filter by category
+    if (category && category !== "all") {
+      filtered = filtered.filter((b) => b.category === category);
+    }
+
+    setFilteredBusinesses(filtered);
   };
 
   const categoryImages: Record<string, string> = {
@@ -100,7 +133,7 @@ const Index = () => {
           <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
             Descubra e agende com os melhores profissionais de beleza e bem-estar perto de você
           </p>
-          <SearchBar />
+          <SearchBar onSearch={handleSearch} />
         </div>
       </section>
 
@@ -121,12 +154,16 @@ const Index = () => {
               <div className="col-span-full text-center py-12">
                 <p className="text-muted-foreground">Carregando estabelecimentos...</p>
               </div>
-            ) : businesses.length === 0 ? (
+            ) : filteredBusinesses.length === 0 ? (
               <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">Nenhum estabelecimento cadastrado ainda</p>
+                <p className="text-muted-foreground">
+                  {businesses.length === 0
+                    ? "Nenhum estabelecimento cadastrado ainda"
+                    : "Nenhum estabelecimento encontrado com esses filtros"}
+                </p>
               </div>
             ) : (
-              businesses.map((business) => (
+              filteredBusinesses.map((business) => (
                 <BusinessCard
                   key={business.id}
                   id={business.id}
@@ -138,35 +175,6 @@ const Index = () => {
                 />
               ))
             )}
-          </div>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-16 px-4 bg-secondary/30">
-        <div className="container mx-auto">
-          <h3 className="text-3xl font-bold mb-8 text-center">Explore por Categoria</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { name: "Cabelo", emoji: "💇" },
-              { name: "Barbearia", emoji: "💈" },
-              { name: "Unhas", emoji: "💅" },
-              { name: "Massagem", emoji: "💆" },
-              { name: "Estética", emoji: "✨" },
-              { name: "Spa", emoji: "🧖" },
-              { name: "Maquiagem", emoji: "💄" },
-              { name: "Tatuagem", emoji: "🎨" },
-            ].map((category) => (
-              <div
-                key={category.name}
-                className="bg-card p-6 rounded-xl text-center hover:shadow-elegant transition-smooth cursor-pointer group"
-              >
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-smooth">
-                  {category.emoji}
-                </div>
-                <h4 className="font-semibold">{category.name}</h4>
-              </div>
-            ))}
           </div>
         </div>
       </section>

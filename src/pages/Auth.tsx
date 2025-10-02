@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "lucide-react";
+import { maskPhoneInput, validatePhoneNumber } from "@/lib/phone-utils";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
 
   useEffect(() => {
     // Check if user is already logged in
@@ -65,6 +67,17 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate phone number
+    if (!validatePhoneNumber(phone)) {
+      toast({
+        variant: "destructive",
+        title: "Número inválido",
+        description: "Por favor, insira um número de celular válido",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -75,6 +88,7 @@ const Auth = () => {
           data: {
             full_name: fullName,
             user_type: userType,
+            phone: phone,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -100,6 +114,11 @@ const Auth = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = maskPhoneInput(e.target.value);
+    setPhone(masked);
   };
 
   return (
@@ -168,6 +187,19 @@ const Auth = () => {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Celular *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+55 (11) 98765-4321"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                    required
+                    maxLength={19}
                   />
                 </div>
                 
