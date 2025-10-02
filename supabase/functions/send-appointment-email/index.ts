@@ -35,7 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
       .select(`
         *,
         businesses (name, address, city, state, phone, email),
-        profiles!appointments_client_id_fkey (full_name, email),
+        profiles!appointments_client_id_fkey (full_name),
         appointment_services (
           services (name, price, duration_minutes)
         )
@@ -48,8 +48,21 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Appointment not found");
     }
 
+    // Fetch client email from auth.users
+    const { data: { user: clientUser }, error: userError } = await supabase.auth.admin.getUserById(
+      appointment.client_id
+    );
+
+    if (userError || !clientUser) {
+      console.error("[Email] Error fetching client user:", userError);
+      throw new Error("Client user not found");
+    }
+
     const business = appointment.businesses;
-    const client = appointment.profiles;
+    const client = {
+      full_name: appointment.profiles.full_name,
+      email: clientUser.email
+    };
     const services = appointment.appointment_services.map((as: any) => as.services);
     
     const totalPrice = services.reduce((sum: number, s: any) => sum + Number(s.price), 0);
