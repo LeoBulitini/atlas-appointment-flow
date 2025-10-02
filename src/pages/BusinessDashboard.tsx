@@ -17,6 +17,7 @@ import { formatPhoneNumber } from "@/lib/phone-utils";
 import { format, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { RescheduleDialog } from "@/components/RescheduleDialog";
 
 const BusinessDashboard = () => {
   const navigate = useNavigate();
@@ -27,7 +28,9 @@ const BusinessDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showServiceDialog, setShowServiceDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfDay(new Date()),
     to: endOfDay(new Date(new Date().setDate(new Date().getDate() + 30))),
@@ -218,6 +221,16 @@ const BusinessDashboard = () => {
             <>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSelectedAppointment(appointment);
+                  setShowRescheduleDialog(true);
+                }}
+              >
+                Alterar
+              </Button>
+              <Button
+                size="sm"
                 variant="destructive"
                 onClick={() => {
                   setSelectedAppointmentId(appointment.id);
@@ -325,18 +338,6 @@ const BusinessDashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Serviços
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-accent">{services.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
                 Receita Total
               </CardTitle>
@@ -382,68 +383,6 @@ const BusinessDashboard = () => {
             </Tabs>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Serviços</CardTitle>
-            <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
-              <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" />Adicionar Serviço</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Novo Serviço</DialogTitle>
-                  <DialogDescription>Adicione um novo serviço ao seu catálogo</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddService} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Nome do Serviço</Label>
-                    <Input id="name" value={serviceName} onChange={(e) => setServiceName(e.target.value)} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea id="description" value={serviceDescription} onChange={(e) => setServiceDescription(e.target.value)} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="duration">Duração (min)</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        value={serviceDuration}
-                        onChange={(e) => setServiceDuration(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="price">Preço (R$)</Label>
-                      <Input id="price" type="number" step="0.01" value={servicePrice} onChange={(e) => setServicePrice(e.target.value)} required />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full">Salvar Serviço</Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              {services.map((service) => (
-                <Card key={service.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{service.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">{service.description}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Duração: {service.duration_minutes} min</span>
-                      <span className="font-bold">R$ {Number(service.price).toFixed(2)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </main>
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
@@ -458,6 +397,19 @@ const BusinessDashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedAppointment && (
+        <RescheduleDialog
+          open={showRescheduleDialog}
+          onOpenChange={setShowRescheduleDialog}
+          appointmentId={selectedAppointment.id}
+          businessId={selectedAppointment.business_id}
+          currentDate={selectedAppointment.appointment_date}
+          currentTime={selectedAppointment.appointment_time}
+          currentServiceId={selectedAppointment.service_id}
+          onRescheduleSuccess={fetchBusinessData}
+        />
+      )}
     </div>
   );
 };

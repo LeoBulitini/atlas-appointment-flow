@@ -141,8 +141,8 @@ export default function BusinessClients() {
                 clients.map((client) => (
                   <div
                     key={client.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-accent ${
-                      selectedClient === client.client_id ? 'bg-accent' : ''
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted hover:text-foreground ${
+                      selectedClient === client.client_id ? 'bg-muted' : ''
                     }`}
                     onClick={() => fetchClientAppointments(client.client_id)}
                   >

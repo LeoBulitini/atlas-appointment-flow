@@ -14,6 +14,128 @@ import { Loader2, MapPin, Phone, Mail, Clock, DollarSign, MessageCircle } from "
 import { format, parse, addMinutes, isBefore, isToday, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatPhoneNumber } from "@/lib/phone-utils";
+import { Star } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ReviewsList } from "@/components/ReviewsList";
+
+interface ReviewsSectionProps {
+  businessId: string;
+}
+
+const ReviewsSection = ({ businessId }: ReviewsSectionProps) => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [businessId]);
+
+  const fetchReviews = async () => {
+    const { data } = await supabase
+      .from("reviews")
+      .select("*, profiles(full_name)")
+      .eq("business_id", businessId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      setReviews(data);
+      
+      // Fetch all reviews for average
+      const { data: allReviews } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("business_id", businessId);
+      
+      if (allReviews && allReviews.length > 0) {
+        const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        setAverageRating(Number(avg.toFixed(1)));
+      }
+    }
+  };
+
+  if (reviews.length === 0 && averageRating === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Avaliações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Ainda não há avaliações para este estabelecimento.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const latestReview = reviews[0];
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Avaliações</span>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">{averageRating}</span>
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-4 h-4 ${
+                      star <= Math.round(averageRating)
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {latestReview && (
+            <div className="border-l-2 border-primary pl-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-semibold">{latestReview.profiles?.full_name}</span>
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-3 h-3 ${
+                        star <= latestReview.rating
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-muted"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              {latestReview.comment && (
+                <p className="text-sm text-muted-foreground">{latestReview.comment}</p>
+              )}
+            </div>
+          )}
+          <Dialog open={showAllReviews} onOpenChange={setShowAllReviews}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full">
+                Ver Todas as Avaliações
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Todas as Avaliações</DialogTitle>
+              </DialogHeader>
+              <ReviewsList businessId={businessId} />
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+    </>
+  );
+};
 
 interface Service {
   id: string;
@@ -484,7 +606,7 @@ const Booking = () => {
                         Horário de Funcionamento
                       </h4>
                       <div className="space-y-1 text-sm">
-                        {Object.entries(business.opening_hours).map(([day, schedule]: [string, any]) => {
+                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
                           const dayNames: { [key: string]: string } = {
                             monday: 'Segunda',
                             tuesday: 'Terça',
@@ -494,6 +616,8 @@ const Booking = () => {
                             saturday: 'Sábado',
                             sunday: 'Domingo'
                           };
+                          const schedule = business.opening_hours[day];
+                          if (!schedule) return null;
                           return (
                             <div key={day} className="flex justify-between">
                               <span className="text-muted-foreground">{dayNames[day]}:</span>
@@ -533,6 +657,8 @@ const Booking = () => {
                 </CardContent>
               </Card>
             )}
+
+            <ReviewsSection businessId={businessId!} />
           </div>
 
           {/* Booking Form */}

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewDialog } from "@/components/ReviewDialog";
+import { RescheduleDialog } from "@/components/RescheduleDialog";
 
 interface Appointment {
   id: string;
@@ -30,6 +31,7 @@ const ClientDashboard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -95,6 +97,11 @@ const ClientDashboard = () => {
   const openReviewDialog = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setReviewDialogOpen(true);
+  };
+
+  const openRescheduleDialog = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setRescheduleDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -181,9 +188,18 @@ const ClientDashboard = () => {
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         {(appointment.status === "pending" || appointment.status === "confirmed") && (
-                          <Button size="sm" variant="destructive" onClick={() => handleCancelAppointment(appointment.id)}>
-                            Cancelar
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openRescheduleDialog(appointment)}
+                            >
+                              Alterar
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleCancelAppointment(appointment.id)}>
+                              Cancelar
+                            </Button>
+                          </>
                         )}
                         {appointment.status === "completed" && (
                           <>
@@ -205,13 +221,25 @@ const ClientDashboard = () => {
       </main>
 
       {selectedAppointment && (
-        <ReviewDialog
-          open={reviewDialogOpen}
-          onOpenChange={setReviewDialogOpen}
-          appointmentId={selectedAppointment.id}
-          businessId={selectedAppointment.business_id}
-          onReviewSubmitted={fetchAppointments}
-        />
+        <>
+          <ReviewDialog
+            open={reviewDialogOpen}
+            onOpenChange={setReviewDialogOpen}
+            appointmentId={selectedAppointment.id}
+            businessId={selectedAppointment.business_id}
+            onReviewSubmitted={fetchAppointments}
+          />
+          <RescheduleDialog
+            open={rescheduleDialogOpen}
+            onOpenChange={setRescheduleDialogOpen}
+            appointmentId={selectedAppointment.id}
+            businessId={selectedAppointment.business_id}
+            currentDate={selectedAppointment.appointment_date}
+            currentTime={selectedAppointment.appointment_time}
+            currentServiceId={selectedAppointment.service_id}
+            onRescheduleSuccess={fetchAppointments}
+          />
+        </>
       )}
     </div>
   );

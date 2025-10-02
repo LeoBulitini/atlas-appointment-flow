@@ -66,7 +66,7 @@ export default function BusinessReviews() {
       <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
-          onClick={() => navigate("/business/dashboard")}
+          onClick={() => navigate("/dashboard/business")}
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
