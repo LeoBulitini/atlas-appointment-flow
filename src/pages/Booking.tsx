@@ -68,7 +68,7 @@ const Booking = () => {
     if (selectedDate && business) {
       generateAvailableSlots();
     }
-  }, [selectedDate, business]);
+  }, [selectedDate, business, selectedServices]);
 
   const fetchBusinessAndServices = async () => {
     try {
@@ -154,6 +154,9 @@ const Booking = () => {
     });
     setBookedSlots(booked);
 
+    // Get total duration of selected services
+    const totalDurationNeeded = getTotalDuration();
+
     // Generate 15-minute slots
     const slots: string[] = [];
     const openTime = parse(daySchedule.openTime, "HH:mm", new Date());
@@ -176,7 +179,45 @@ const Booking = () => {
         new Date()
       );
 
-      if (!isBreak && !booked.includes(slotTime) && !isPast) {
+      // Check if there's enough consecutive time available for the selected services
+      let hasEnoughTime = true;
+      if (totalDurationNeeded > 0) {
+        let checkSlot = currentSlot;
+        const endSlot = addMinutes(currentSlot, totalDurationNeeded);
+        
+        // Verify all slots needed are available
+        while (checkSlot < endSlot) {
+          const checkTime = format(checkSlot, "HH:mm");
+          
+          // Check if this slot is booked
+          if (booked.includes(checkTime)) {
+            hasEnoughTime = false;
+            break;
+          }
+          
+          // Check if this slot is in break time
+          const isInBreak = daySchedule.breaks?.some((br: any) => {
+            const breakStart = parse(br.start, "HH:mm", new Date());
+            const breakEnd = parse(br.end, "HH:mm", new Date());
+            return checkSlot >= breakStart && checkSlot < breakEnd;
+          });
+          
+          if (isInBreak) {
+            hasEnoughTime = false;
+            break;
+          }
+          
+          // Check if this slot exceeds closing time
+          if (checkSlot >= closeTime) {
+            hasEnoughTime = false;
+            break;
+          }
+          
+          checkSlot = addMinutes(checkSlot, 15);
+        }
+      }
+
+      if (!isBreak && !booked.includes(slotTime) && !isPast && hasEnoughTime) {
         slots.push(slotTime);
       }
       
