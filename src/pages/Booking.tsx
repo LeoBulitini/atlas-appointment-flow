@@ -421,7 +421,7 @@ const Booking = () => {
                               <div className="flex items-start gap-3">
                                 <Checkbox
                                   checked={selectedServices.includes(service.id)}
-                                  onCheckedChange={() => handleServiceToggle(service.id)}
+                                  onClick={(e) => e.stopPropagation()}
                                 />
                                 <div className="flex-1">
                                   <div className="flex justify-between items-start">
