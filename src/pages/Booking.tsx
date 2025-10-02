@@ -567,6 +567,19 @@ const Booking = () => {
                     <span>{business.address}, {business.city} - {business.state}</span>
                   </div>
                   
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      const address = encodeURIComponent(`${business.address}, ${business.city} - ${business.state}`);
+                      window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                    }}
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Abrir no Maps
+                  </Button>
+                  
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span>{formatPhoneNumber(business.phone)}</span>
