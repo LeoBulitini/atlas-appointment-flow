@@ -190,8 +190,8 @@ export default function BusinessClients() {
     if (!hours || !hours.isOpen) return [];
     
     const times: string[] = [];
-    const [startHour, startMinute] = hours.start.split(':').map(Number);
-    const [endHour, endMinute] = hours.end.split(':').map(Number);
+    const [startHour, startMinute] = hours.openTime.split(':').map(Number);
+    const [endHour, endMinute] = hours.closeTime.split(':').map(Number);
     
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
