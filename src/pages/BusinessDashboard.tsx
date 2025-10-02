@@ -333,27 +333,40 @@ const BusinessDashboard = () => {
     return (
       <Card key={appointment.id} className="mb-4">
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 mb-4">
-            <div className="flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
                 <p className="font-semibold text-base md:text-lg">{appointment.profiles?.full_name}</p>
+                <p className="text-sm text-muted-foreground mt-1">{servicesNames || "Sem serviços"}</p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
                 {getStatusBadge(appointment.status)}
+                {appointment.profiles?.phone && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9 px-3"
+                    onClick={() => handleWhatsApp(appointment.profiles.phone, appointment.profiles.full_name)}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-1" />
+                    WhatsApp
+                  </Button>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground">{servicesNames || "Sem serviços"}</p>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {appointment.appointment_time}
-                </span>
-                <span className="flex items-center gap-1">
-                  <DollarSign className="h-4 w-4" />
-                  R$ {totalPrice.toFixed(2)}
-                </span>
-              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {appointment.appointment_time}
+              </span>
+              <span className="flex items-center gap-1">
+                <DollarSign className="h-4 w-4" />
+                R$ {totalPrice.toFixed(2)}
+              </span>
             </div>
           </div>
 
@@ -387,17 +400,6 @@ const BusinessDashboard = () => {
               >
                 Cancelar
               </Button>
-              {appointment.profiles?.phone && (
-                <Button
-                  size="sm"
-                  className="min-h-10 col-span-2 sm:col-span-1"
-                  variant="outline"
-                  onClick={() => handleWhatsApp(appointment.profiles.phone, appointment.profiles.full_name)}
-                >
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  WhatsApp
-                </Button>
-              )}
             </>
           )}
         </div>
