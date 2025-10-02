@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, MapPin, Phone, Mail, Clock, DollarSign, MessageCircle } from "lucide-react";
+import { Loader2, MapPin, Phone, Mail, Clock, DollarSign, MessageCircle, X } from "lucide-react";
 import { format, parse, addMinutes, isBefore, isToday, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatPhoneNumber } from "@/lib/phone-utils";
@@ -181,6 +181,8 @@ const Booking = () => {
   const [notes, setNotes] = useState("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [showAllPortfolio, setShowAllPortfolio] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (businessId) {
@@ -657,8 +659,12 @@ const Booking = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2">
-                    {portfolio.slice(0, 4).map((item, index) => (
-                      <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                    {portfolio.slice(0, showAllPortfolio ? portfolio.length : 2).map((item, index) => (
+                      <div 
+                        key={index} 
+                        className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => setSelectedImage(item.media_data)}
+                      >
                         {item.media_type === 'image' ? (
                           <img src={item.media_data} alt="Portfolio" className="w-full h-full object-cover" />
                         ) : (
@@ -667,9 +673,37 @@ const Booking = () => {
                       </div>
                     ))}
                   </div>
+                  {portfolio.length > 2 && (
+                    <Button
+                      variant="outline"
+                      className="w-full mt-4"
+                      onClick={() => setShowAllPortfolio(!showAllPortfolio)}
+                    >
+                      {showAllPortfolio ? 'Ver menos' : 'Ver mais'}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
+
+            {/* Image Preview Dialog */}
+            <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+              <DialogContent className="max-w-4xl w-full p-0 overflow-hidden">
+                <button
+                  onClick={() => setSelectedImage(null)}
+                  className="absolute top-4 right-4 z-50 rounded-full bg-background/80 backdrop-blur-sm p-2 hover:bg-background transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+                {selectedImage && (
+                  <img 
+                    src={selectedImage} 
+                    alt="Portfolio ampliado" 
+                    className="w-full h-auto max-h-[90vh] object-contain"
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
 
             <ReviewsSection businessId={businessId!} />
           </div>
