@@ -570,8 +570,10 @@ const BusinessDashboard = () => {
         )}
 
         <Card className="mb-8">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle>Agendamentos</CardTitle>
+          <CardHeader className="space-y-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>Agendamentos</CardTitle>
+            </div>
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
           </CardHeader>
           <CardContent>
