@@ -326,7 +326,8 @@ const Booking = () => {
           p_appointment_date: format(selectedDate, "yyyy-MM-dd"),
           p_appointment_time: selectedTime,
           p_end_time: format(endTime, "HH:mm:ss"),
-          p_notes: notes || null
+          p_notes: notes || null,
+          p_auto_confirm: business.auto_confirm_appointments || false
         });
 
       if (rpcError) {
@@ -367,18 +368,6 @@ const Booking = () => {
         .insert(serviceInserts);
 
       if (servicesError) throw servicesError;
-
-      // Update status if auto-confirm is enabled (after inserting services)
-      if (business.auto_confirm_appointments) {
-        const { error: updateError } = await supabase
-          .from("appointments")
-          .update({ status: 'confirmed' })
-          .eq("id", resultData.appointment_id);
-        
-        if (updateError) {
-          console.error('Error auto-confirming:', updateError);
-        }
-      }
 
       toast({
         title: "Sucesso!",

@@ -403,15 +403,26 @@ export type Database = {
     }
     Functions: {
       create_appointment_if_available: {
-        Args: {
-          p_appointment_date: string
-          p_appointment_time: string
-          p_business_id: string
-          p_client_id: string
-          p_end_time: string
-          p_notes: string
-          p_service_id: string
-        }
+        Args:
+          | {
+              p_appointment_date: string
+              p_appointment_time: string
+              p_auto_confirm?: boolean
+              p_business_id: string
+              p_client_id: string
+              p_end_time: string
+              p_notes: string
+              p_service_id: string
+            }
+          | {
+              p_appointment_date: string
+              p_appointment_time: string
+              p_business_id: string
+              p_client_id: string
+              p_end_time: string
+              p_notes: string
+              p_service_id: string
+            }
         Returns: Json
       }
       gbt_bit_compress: {
