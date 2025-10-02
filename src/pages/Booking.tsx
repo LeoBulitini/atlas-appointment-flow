@@ -9,8 +9,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin, Phone, Mail, Clock, DollarSign } from "lucide-react";
-import { format } from "date-fns";
+import { format, parse, addMinutes, isBefore, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Service {
@@ -32,6 +33,12 @@ interface Business {
   phone: string;
   email: string;
   price_range: string;
+  opening_hours: any;
+}
+
+interface PortfolioItem {
+  media_type: string;
+  media_data: string;
 }
 
 const Booking = () => {
@@ -43,16 +50,25 @@ const Booking = () => {
   const [submitting, setSubmitting] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
 
   useEffect(() => {
     if (businessId) {
       fetchBusinessAndServices();
     }
   }, [businessId]);
+
+  useEffect(() => {
+    if (selectedDate && business) {
+      generateAvailableSlots();
+    }
+  }, [selectedDate, business, bookedSlots]);
 
   const fetchBusinessAndServices = async () => {
     try {
@@ -74,6 +90,14 @@ const Booking = () => {
 
       if (servicesError) throw servicesError;
       setServices(servicesData || []);
+
+      const { data: portfolioData } = await supabase
+        .from("business_portfolio")
+        .select("media_type, media_data")
+        .eq("business_id", businessId)
+        .order("display_order", { ascending: true });
+
+      setPortfolio(portfolioData || []);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
@@ -86,13 +110,111 @@ const Booking = () => {
     }
   };
 
+  const generateAvailableSlots = async () => {
+    if (!selectedDate || !business?.opening_hours) return;
+
+    const dayName = format(selectedDate, 'EEEE', { locale: ptBR }).toLowerCase();
+    const englishDays: { [key: string]: string } = {
+      'domingo': 'sunday',
+      'segunda-feira': 'monday',
+      'terça-feira': 'tuesday',
+      'quarta-feira': 'wednesday',
+      'quinta-feira': 'thursday',
+      'sexta-feira': 'friday',
+      'sábado': 'saturday'
+    };
+    
+    const dayKey = englishDays[dayName];
+    const daySchedule = business.opening_hours[dayKey];
+
+    if (!daySchedule || !daySchedule.isOpen) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    // Fetch booked appointments for this date
+    const { data: appointments } = await supabase
+      .from("appointments")
+      .select("appointment_time, end_time")
+      .eq("business_id", businessId)
+      .eq("appointment_date", format(selectedDate, "yyyy-MM-dd"))
+      .in("status", ["pending", "confirmed"]);
+
+    const booked: string[] = [];
+    appointments?.forEach(apt => {
+      if (apt.appointment_time && apt.end_time) {
+        const startTime = parse(apt.appointment_time, "HH:mm", new Date());
+        const endTime = parse(apt.end_time, "HH:mm", new Date());
+        let current = startTime;
+        while (current < endTime) {
+          booked.push(format(current, "HH:mm"));
+          current = addMinutes(current, 15);
+        }
+      }
+    });
+    setBookedSlots(booked);
+
+    // Generate 15-minute slots
+    const slots: string[] = [];
+    const openTime = parse(daySchedule.openTime, "HH:mm", new Date());
+    const closeTime = parse(daySchedule.closeTime, "HH:mm", new Date());
+    let currentSlot = openTime;
+
+    while (currentSlot < closeTime) {
+      const slotTime = format(currentSlot, "HH:mm");
+      
+      // Check if slot is in break time
+      const isBreak = daySchedule.breaks?.some((br: any) => {
+        const breakStart = parse(br.start, "HH:mm", new Date());
+        const breakEnd = parse(br.end, "HH:mm", new Date());
+        return currentSlot >= breakStart && currentSlot < breakEnd;
+      });
+
+      // Check if slot is in the past
+      const isPast = isToday(selectedDate) && isBefore(
+        parse(slotTime, "HH:mm", new Date()),
+        new Date()
+      );
+
+      if (!isBreak && !booked.includes(slotTime) && !isPast) {
+        slots.push(slotTime);
+      }
+      
+      currentSlot = addMinutes(currentSlot, 15);
+    }
+
+    setAvailableSlots(slots);
+  };
+
+  const getTotalDuration = () => {
+    return selectedServices.reduce((total, serviceId) => {
+      const service = services.find(s => s.id === serviceId);
+      return total + (service?.duration_minutes || 0);
+    }, 0);
+  };
+
+  const getTotalPrice = () => {
+    return selectedServices.reduce((total, serviceId) => {
+      const service = services.find(s => s.id === serviceId);
+      return total + (service?.price || 0);
+    }, 0);
+  };
+
+  const handleServiceToggle = (serviceId: string) => {
+    setSelectedServices(prev =>
+      prev.includes(serviceId)
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedService || !selectedDate || !selectedTime) {
+    if (selectedServices.length === 0 || !selectedDate || !selectedTime) {
       toast({
         title: "Atenção",
-        description: "Por favor, preencha todos os campos obrigatórios",
+        description: "Por favor, selecione ao menos um serviço, data e horário",
         variant: "destructive",
       });
       return;
@@ -113,17 +235,38 @@ const Booking = () => {
         return;
       }
 
-      const { error } = await supabase.from("appointments").insert({
-        business_id: businessId,
-        service_id: selectedService,
-        client_id: user.id,
-        appointment_date: format(selectedDate, "yyyy-MM-dd"),
-        appointment_time: selectedTime,
-        notes,
-        status: "pending",
-      });
+      const totalDuration = getTotalDuration();
+      const startTime = parse(selectedTime, "HH:mm", new Date());
+      const endTime = addMinutes(startTime, totalDuration);
 
-      if (error) throw error;
+      const { data: appointmentData, error: appointmentError } = await supabase
+        .from("appointments")
+        .insert({
+          business_id: businessId,
+          service_id: selectedServices[0], // Primary service for compatibility
+          client_id: user.id,
+          appointment_date: format(selectedDate, "yyyy-MM-dd"),
+          appointment_time: selectedTime,
+          end_time: format(endTime, "HH:mm"),
+          notes,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (appointmentError) throw appointmentError;
+
+      // Insert all selected services
+      const serviceInserts = selectedServices.map(serviceId => ({
+        appointment_id: appointmentData.id,
+        service_id: serviceId
+      }));
+
+      const { error: servicesError } = await supabase
+        .from("appointment_services")
+        .insert(serviceInserts);
+
+      if (servicesError) throw servicesError;
 
       toast({
         title: "Sucesso!",
@@ -142,11 +285,6 @@ const Booking = () => {
       setSubmitting(false);
     }
   };
-
-  const timeSlots = [
-    "08:00", "09:00", "10:00", "11:00", "12:00",
-    "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"
-  ];
 
   if (loading) {
     return (
@@ -177,6 +315,9 @@ const Booking = () => {
     );
   }
 
+  const totalDuration = getTotalDuration();
+  const totalPrice = getTotalPrice();
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -184,7 +325,7 @@ const Booking = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Business Info */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>{business.name}</CardTitle>
@@ -222,6 +363,27 @@ const Booking = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {portfolio.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Portfólio</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2">
+                    {portfolio.slice(0, 4).map((item, index) => (
+                      <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                        {item.media_type === 'image' ? (
+                          <img src={item.media_data} alt="Portfolio" className="w-full h-full object-cover" />
+                        ) : (
+                          <video src={item.media_data} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Booking Form */}
@@ -230,7 +392,7 @@ const Booking = () => {
               <CardHeader>
                 <CardTitle>Agendar Serviço</CardTitle>
                 <CardDescription>
-                  Selecione o serviço, data e horário desejados
+                  Selecione os serviços, data e horário desejados
                 </CardDescription>
               </CardHeader>
               
@@ -238,7 +400,7 @@ const Booking = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Service Selection */}
                   <div className="space-y-2">
-                    <Label>Serviço *</Label>
+                    <Label>Serviços *</Label>
                     <div className="grid gap-3">
                       {services.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
@@ -249,30 +411,38 @@ const Booking = () => {
                           <Card
                             key={service.id}
                             className={`cursor-pointer transition-smooth ${
-                              selectedService === service.id
+                              selectedServices.includes(service.id)
                                 ? "ring-2 ring-primary"
                                 : "hover:shadow-md"
                             }`}
-                            onClick={() => setSelectedService(service.id)}
+                            onClick={() => handleServiceToggle(service.id)}
                           >
                             <CardContent className="p-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="font-semibold">{service.name}</h4>
-                                  {service.description && (
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                      {service.description}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span>{service.duration_minutes} min</span>
+                              <div className="flex items-start gap-3">
+                                <Checkbox
+                                  checked={selectedServices.includes(service.id)}
+                                  onCheckedChange={() => handleServiceToggle(service.id)}
+                                />
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <h4 className="font-semibold">{service.name}</h4>
+                                      {service.description && (
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                          {service.description}
+                                        </p>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                                        <Clock className="h-4 w-4" />
+                                        <span>{service.duration_minutes} min</span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-lg font-bold text-primary">
+                                        R$ {service.price.toFixed(2)}
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-lg font-bold text-primary">
-                                    R$ {service.price.toFixed(2)}
-                                  </p>
                                 </div>
                               </div>
                             </CardContent>
@@ -280,6 +450,12 @@ const Booking = () => {
                         ))
                       )}
                     </div>
+                    {selectedServices.length > 0 && (
+                      <div className="p-4 bg-accent rounded-lg">
+                        <p className="font-semibold">Total: R$ {totalPrice.toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground">Duração: {totalDuration} minutos</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Date Selection */}
@@ -297,20 +473,26 @@ const Booking = () => {
 
                   {/* Time Selection */}
                   <div className="space-y-2">
-                    <Label>Horário *</Label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {timeSlots.map((time) => (
-                        <Button
-                          key={time}
-                          type="button"
-                          variant={selectedTime === time ? "default" : "outline"}
-                          onClick={() => setSelectedTime(time)}
-                          className="w-full"
-                        >
-                          {time}
-                        </Button>
-                      ))}
-                    </div>
+                    <Label>Horário * (Intervalos de 15 minutos)</Label>
+                    {!selectedDate ? (
+                      <p className="text-sm text-muted-foreground">Selecione uma data primeiro</p>
+                    ) : availableSlots.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data</p>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+                        {availableSlots.map((time) => (
+                          <Button
+                            key={time}
+                            type="button"
+                            variant={selectedTime === time ? "default" : "outline"}
+                            onClick={() => setSelectedTime(time)}
+                            className="w-full"
+                          >
+                            {time}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Notes */}

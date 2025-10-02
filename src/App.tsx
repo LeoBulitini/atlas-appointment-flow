@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import ClientDashboard from "./pages/ClientDashboard";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import BusinessSetup from "./pages/BusinessSetup";
+import BusinessSettings from "./pages/BusinessSettings";
+import BusinessClients from "./pages/BusinessClients";
 import Booking from "./pages/Booking";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -45,6 +47,22 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <BusinessDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/settings"
+            element={
+              <ProtectedRoute requiredUserType="business">
+                <BusinessSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/clients"
+            element={
+              <ProtectedRoute requiredUserType="business">
+                <BusinessClients />
               </ProtectedRoute>
             }
           />

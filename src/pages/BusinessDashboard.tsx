@@ -214,9 +214,20 @@ const BusinessDashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Dashboard da Empresa</h1>
-          <p className="text-muted-foreground">{business.name}</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Dashboard da Empresa</h1>
+            <p className="text-muted-foreground">{business.name}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate("/business/clients")}>
+              <Users className="mr-2 h-4 w-4" />
+              Clientes
+            </Button>
+            <Button onClick={() => navigate("/business/settings")}>
+              Configurações
+            </Button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-4 gap-6 mb-8">
@@ -276,96 +287,7 @@ const BusinessDashboard = () => {
           </Card>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Serviços Oferecidos</CardTitle>
-              <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Novo Serviço</DialogTitle>
-                    <DialogDescription>
-                      Adicione um novo serviço ao seu catálogo
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleAddService} className="space-y-4">
-                    <div>
-                      <Label htmlFor="service-name">Nome do Serviço</Label>
-                      <Input
-                        id="service-name"
-                        value={serviceName}
-                        onChange={(e) => setServiceName(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="service-description">Descrição</Label>
-                      <Textarea
-                        id="service-description"
-                        value={serviceDescription}
-                        onChange={(e) => setServiceDescription(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="service-duration">Duração (min)</Label>
-                        <Input
-                          id="service-duration"
-                          type="number"
-                          value={serviceDuration}
-                          onChange={(e) => setServiceDuration(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="service-price">Preço (R$)</Label>
-                        <Input
-                          id="service-price"
-                          type="number"
-                          step="0.01"
-                          value={servicePrice}
-                          onChange={(e) => setServicePrice(e.target.value)}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full">Adicionar Serviço</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              {services.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum serviço cadastrado ainda
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {services.map((service) => (
-                    <div key={service.id} className="p-3 border rounded-lg">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-semibold">{service.name}</h4>
-                          <p className="text-sm text-muted-foreground">{service.description}</p>
-                        </div>
-                        <Badge variant="secondary">R$ {Number(service.price).toFixed(2)}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Duração: {service.duration_minutes} minutos
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+        <div className="grid md:grid-cols-1 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Agendamentos Recentes</CardTitle>
