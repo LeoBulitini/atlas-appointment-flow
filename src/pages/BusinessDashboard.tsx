@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X } from "lucide-react";
+import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { format, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-f
 import { ptBR } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
+import { Switch } from "@/components/ui/switch";
 
 const BusinessDashboard = () => {
   const navigate = useNavigate();
@@ -167,6 +168,49 @@ const BusinessDashboard = () => {
     const link = `${window.location.origin}/booking/${business.id}`;
     navigator.clipboard.writeText(link);
     toast({ title: "Link copiado!", description: "O link de agendamento foi copiado para a área de transferência." });
+  };
+
+  const handleToggleBusinessStatus = async (isActive: boolean) => {
+    if (!business) return;
+
+    // Se tentar desativar, verificar se há agendamentos pendentes ou confirmados
+    if (!isActive) {
+      const activeAppointments = appointments.filter(
+        (app) => app.status === "pending" || app.status === "confirmed"
+      );
+
+      if (activeAppointments.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Não é possível desativar",
+          description: `Você tem ${activeAppointments.length} agendamento(s) pendente(s) ou confirmado(s). Cancele-os ou aguarde a conclusão antes de desativar.`,
+        });
+        return;
+      }
+    }
+
+    try {
+      const { error } = await supabase
+        .from("businesses")
+        .update({ is_active: isActive })
+        .eq("id", business.id);
+
+      if (error) throw error;
+
+      setBusiness({ ...business, is_active: isActive });
+      toast({
+        title: isActive ? "Empresa ativada!" : "Empresa desativada",
+        description: isActive
+          ? "Sua empresa agora está visível no Explorar e pode receber agendamentos."
+          : "Sua empresa foi desativada e não aparecerá mais no Explorar.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message,
+      });
+    }
   };
 
   const todayAppointments = appointments.filter(
@@ -326,6 +370,28 @@ const BusinessDashboard = () => {
             <Button onClick={() => navigate("/business/settings")}>Configurações</Button>
           </div>
         </div>
+
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Power className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-semibold">Status da Empresa</p>
+                  <p className="text-sm text-muted-foreground">
+                    {business.is_active 
+                      ? "Sua empresa está ativa e visível no Explorar" 
+                      : "Sua empresa está desativada e não aparece no Explorar"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={business.is_active}
+                onCheckedChange={handleToggleBusinessStatus}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card>
