@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, Star } from "lucide-react";
+import { Calendar, Clock, Star, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewDialog } from "@/components/ReviewDialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
@@ -20,7 +20,10 @@ interface Appointment {
   business_id: string;
   service_id: string;
   businesses: { name: string; address: string; city: string };
-  services: { name: string; price: number };
+  appointment_services: Array<{
+    service_id: string;
+    services: { name: string; price: number };
+  }>;
 }
 
 const ClientDashboard = () => {
@@ -64,7 +67,14 @@ const ClientDashboard = () => {
 
       const { data, error } = await supabase
         .from("appointments")
-        .select("*, businesses (name, address, city), services (name, price)")
+        .select(`
+          *,
+          businesses (name, address, city),
+          appointment_services (
+            service_id,
+            services (name, price)
+          )
+        `)
         .eq("client_id", user.id)
         .order("appointment_date", { ascending: false });
 
@@ -162,58 +172,65 @@ const ClientDashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {appointments.map((appointment) => (
-                  <Card key={appointment.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg mb-1">{appointment.businesses.name}</h3>
-                          <p className="text-sm text-muted-foreground mb-2">{appointment.services.name}</p>
-                          <div className="flex flex-wrap gap-3 text-sm">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {appointment.appointment_time}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {appointment.businesses.city}
-                            </span>
+                {appointments.map((appointment) => {
+                  const appointmentServices = appointment.appointment_services || [];
+                  const totalPrice = appointmentServices.reduce((sum: number, as: any) => 
+                    sum + Number(as.services?.price || 0), 0);
+                  const servicesNames = appointmentServices.map((as: any) => as.services?.name).join(", ");
+
+                  return (
+                    <Card key={appointment.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <h3 className="font-bold text-lg mb-1">{appointment.businesses.name}</h3>
+                            <p className="text-sm text-muted-foreground mb-2">{servicesNames || "Sem serviços"}</p>
+                            <div className="flex flex-wrap gap-3 text-sm">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {appointment.appointment_time}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-4 w-4" />
+                                R$ {totalPrice.toFixed(2)}
+                              </span>
+                            </div>
                           </div>
+                          {getStatusBadge(appointment.status)}
                         </div>
-                        {getStatusBadge(appointment.status)}
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {(appointment.status === "pending" || appointment.status === "confirmed") && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openRescheduleDialog(appointment)}
-                            >
-                              Alterar
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleCancelAppointment(appointment.id)}>
-                              Cancelar
-                            </Button>
-                          </>
-                        )}
-                        {appointment.status === "completed" && (
-                          <>
-                            <Button size="sm" onClick={() => handleRebook(appointment)}>Agendar Novamente</Button>
-                            <Button size="sm" variant="outline" onClick={() => openReviewDialog(appointment)}>
-                              <Star className="mr-2 h-4 w-4" />
-                              Avaliar
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="flex gap-2 flex-wrap">
+                          {(appointment.status === "pending" || appointment.status === "confirmed") && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openRescheduleDialog(appointment)}
+                              >
+                                Alterar
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => handleCancelAppointment(appointment.id)}>
+                                Cancelar
+                              </Button>
+                            </>
+                          )}
+                          {appointment.status === "completed" && (
+                            <>
+                              <Button size="sm" onClick={() => handleRebook(appointment)}>Agendar Novamente</Button>
+                              <Button size="sm" variant="outline" onClick={() => openReviewDialog(appointment)}>
+                                <Star className="mr-2 h-4 w-4" />
+                                Avaliar
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </CardContent>

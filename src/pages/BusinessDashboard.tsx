@@ -90,7 +90,14 @@ const BusinessDashboard = () => {
 
         const { data: appointmentsData } = await supabase
           .from("appointments")
-          .select(`*, profiles (full_name, phone), services (name, price)`)
+          .select(`
+            *,
+            profiles (full_name, phone),
+            appointment_services (
+              service_id,
+              services (name, price)
+            )
+          `)
           .eq("business_id", businessData.id)
           .neq("status", "cancelled")
           .order("appointment_date", { ascending: true });
@@ -173,7 +180,11 @@ const BusinessDashboard = () => {
   });
 
   const completedAppointments = appointments.filter((app) => app.status === "completed");
-  const totalRevenue = completedAppointments.reduce((sum, app) => sum + Number(app.services?.price || 0), 0);
+  const totalRevenue = completedAppointments.reduce((sum, app) => {
+    const appointmentTotal = app.appointment_services?.reduce((serviceSum: number, as: any) => 
+      serviceSum + Number(as.services?.price || 0), 0) || 0;
+    return sum + appointmentTotal;
+  }, 0);
 
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
@@ -186,30 +197,36 @@ const BusinessDashboard = () => {
     return <Badge className={statusInfo.className}>{statusInfo.label}</Badge>;
   };
 
-  const renderAppointmentCard = (appointment: any) => (
-    <Card key={appointment.id} className="mb-4">
-      <CardContent className="pt-6">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1">
-            <p className="font-semibold text-lg">{appointment.profiles?.full_name}</p>
-            <p className="text-sm text-muted-foreground">{appointment.services?.name}</p>
-            <div className="flex items-center gap-4 mt-2 text-sm">
-              <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {appointment.appointment_time}
-              </span>
-              <span className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4" />
-                R$ {Number(appointment.services?.price).toFixed(2)}
-              </span>
+  const renderAppointmentCard = (appointment: any) => {
+    const appointmentServices = appointment.appointment_services || [];
+    const totalPrice = appointmentServices.reduce((sum: number, as: any) => 
+      sum + Number(as.services?.price || 0), 0);
+    const servicesNames = appointmentServices.map((as: any) => as.services?.name).join(", ");
+
+    return (
+      <Card key={appointment.id} className="mb-4">
+        <CardContent className="pt-6">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex-1">
+              <p className="font-semibold text-lg">{appointment.profiles?.full_name}</p>
+              <p className="text-sm text-muted-foreground">{servicesNames || "Sem serviços"}</p>
+              <div className="flex items-center gap-4 mt-2 text-sm">
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  {appointment.appointment_time}
+                </span>
+                <span className="flex items-center gap-1">
+                  <DollarSign className="h-4 w-4" />
+                  R$ {totalPrice.toFixed(2)}
+                </span>
+              </div>
             </div>
+            {getStatusBadge(appointment.status)}
           </div>
-          {getStatusBadge(appointment.status)}
-        </div>
 
         <div className="flex gap-2 flex-wrap">
           {appointment.status === "pending" && (
@@ -254,7 +271,8 @@ const BusinessDashboard = () => {
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   if (loading) {
     return (
