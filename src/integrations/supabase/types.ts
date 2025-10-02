@@ -200,6 +200,7 @@ export type Database = {
       businesses: {
         Row: {
           address: string
+          auto_confirm_appointments: boolean | null
           category: string
           city: string
           cover_image_url: string | null
@@ -220,6 +221,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          auto_confirm_appointments?: boolean | null
           category: string
           city: string
           cover_image_url?: string | null
@@ -240,6 +242,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          auto_confirm_appointments?: boolean | null
           category?: string
           city?: string
           cover_image_url?: string | null

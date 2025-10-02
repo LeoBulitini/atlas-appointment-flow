@@ -34,6 +34,8 @@ interface Business {
   postal_code: string;
   price_range: string;
   opening_hours: any;
+  auto_confirm_appointments?: boolean;
+  logo_url?: string;
 }
 
 interface PortfolioItem {
@@ -281,11 +283,12 @@ export default function BusinessSettings() {
         <h1 className="text-3xl font-bold mb-6">Configurações</h1>
 
         <Tabs defaultValue="services" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="services">Serviços</TabsTrigger>
             <TabsTrigger value="hours">Horários</TabsTrigger>
             <TabsTrigger value="portfolio">Portfólio</TabsTrigger>
             <TabsTrigger value="info">Informações</TabsTrigger>
+            <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
 
           <TabsContent value="services">
@@ -587,6 +590,89 @@ export default function BusinessSettings() {
                     Salvar Informações
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações Gerais</CardTitle>
+                <CardDescription>Configure as opções da sua empresa</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-0.5">
+                      <Label>Confirmação Automática de Agendamentos</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Quando ativado, todos os agendamentos serão confirmados automaticamente sem precisar de sua aprovação
+                      </p>
+                    </div>
+                    <Switch
+                      checked={business.auto_confirm_appointments || false}
+                      onCheckedChange={async (checked) => {
+                        setLoading(true);
+                        const { error } = await supabase
+                          .from("businesses")
+                          .update({ auto_confirm_appointments: checked })
+                          .eq("id", business.id);
+                        
+                        if (error) {
+                          toast({ title: "Erro ao atualizar configuração", variant: "destructive" });
+                        } else {
+                          toast({ title: "Configuração atualizada com sucesso!" });
+                          fetchBusinessData();
+                        }
+                        setLoading(false);
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <Label>Logo/Foto da Empresa</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Esta foto será exibida na página de explorar estabelecimentos
+                    </p>
+                    {business.logo_url && (
+                      <div className="mb-4">
+                        <img 
+                          src={business.logo_url} 
+                          alt="Logo da empresa" 
+                          className="w-32 h-32 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        if (!e.target.files || e.target.files.length === 0) return;
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        
+                        reader.onloadend = async () => {
+                          const base64 = reader.result as string;
+                          setLoading(true);
+                          const { error } = await supabase
+                            .from("businesses")
+                            .update({ logo_url: base64 })
+                            .eq("id", business.id);
+                          
+                          if (error) {
+                            toast({ title: "Erro ao atualizar logo", variant: "destructive" });
+                          } else {
+                            toast({ title: "Logo atualizada com sucesso!" });
+                            fetchBusinessData();
+                          }
+                          setLoading(false);
+                        };
+                        
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

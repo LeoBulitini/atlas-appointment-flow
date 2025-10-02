@@ -19,6 +19,7 @@ interface Business {
   state: string;
   price_range: string;
   is_active: boolean;
+  logo_url?: string;
 }
 
 const Index = () => {
@@ -132,7 +133,7 @@ const Index = () => {
                   name={business.name}
                   category={business.category}
                   address={`${business.address}, ${business.city} - ${business.state}`}
-                  image={categoryImages[business.category] || salonBeautyImg}
+                  image={business.logo_url || categoryImages[business.category] || salonBeautyImg}
                   priceRange={business.price_range}
                 />
               ))

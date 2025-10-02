@@ -34,6 +34,7 @@ interface Business {
   email: string;
   price_range: string;
   opening_hours: any;
+  auto_confirm_appointments?: boolean;
 }
 
 interface PortfolioItem {
@@ -347,6 +348,14 @@ const Booking = () => {
         return;
       }
 
+      // Update status if auto-confirm is enabled
+      if (business.auto_confirm_appointments) {
+        await supabase
+          .from("appointments")
+          .update({ status: 'confirmed' })
+          .eq("id", resultData.appointment_id);
+      }
+
       // Insert all selected services
       const serviceInserts = selectedServices.map(serviceId => ({
         appointment_id: resultData.appointment_id,
@@ -448,6 +457,39 @@ const Booking = () => {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <span>Faixa de preço: {business.price_range}</span>
                   </div>
+
+                  {business.opening_hours && (
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        Horário de Funcionamento
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        {Object.entries(business.opening_hours).map(([day, schedule]: [string, any]) => {
+                          const dayNames: { [key: string]: string } = {
+                            monday: 'Segunda',
+                            tuesday: 'Terça',
+                            wednesday: 'Quarta',
+                            thursday: 'Quinta',
+                            friday: 'Sexta',
+                            saturday: 'Sábado',
+                            sunday: 'Domingo'
+                          };
+                          return (
+                            <div key={day} className="flex justify-between">
+                              <span className="text-muted-foreground">{dayNames[day]}:</span>
+                              <span>
+                                {schedule.isOpen 
+                                  ? `${schedule.openTime} - ${schedule.closeTime}`
+                                  : 'Fechado'
+                                }
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -542,8 +584,8 @@ const Booking = () => {
                       )}
                     </div>
                     {selectedServices.length > 0 && (
-                      <div className="p-4 bg-accent rounded-lg">
-                        <p className="font-semibold">Total: R$ {totalPrice.toFixed(2)}</p>
+                      <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                        <p className="font-semibold text-foreground">Total: R$ {totalPrice.toFixed(2)}</p>
                         <p className="text-sm text-muted-foreground">Duração: {totalDuration} minutos</p>
                       </div>
                     )}
@@ -556,7 +598,25 @@ const Booking = () => {
                       mode="single"
                       selected={selectedDate}
                       onSelect={setSelectedDate}
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) => {
+                        if (date < new Date()) return true;
+                        if (!business?.opening_hours) return false;
+                        
+                        const dayName = format(date, 'EEEE', { locale: ptBR }).toLowerCase();
+                        const englishDays: { [key: string]: string } = {
+                          'domingo': 'sunday',
+                          'segunda-feira': 'monday',
+                          'terça-feira': 'tuesday',
+                          'quarta-feira': 'wednesday',
+                          'quinta-feira': 'thursday',
+                          'sexta-feira': 'friday',
+                          'sábado': 'saturday'
+                        };
+                        const dayKey = englishDays[dayName];
+                        const daySchedule = business.opening_hours[dayKey];
+                        
+                        return !daySchedule || !daySchedule.isOpen;
+                      }}
                       locale={ptBR}
                       className="rounded-md border"
                     />
@@ -564,7 +624,7 @@ const Booking = () => {
 
                   {/* Time Selection */}
                   <div className="space-y-2">
-                    <Label>Horário * (Intervalos de 15 minutos)</Label>
+                    <Label>Horário *</Label>
                     {!selectedDate ? (
                       <p className="text-sm text-muted-foreground">Selecione uma data primeiro</p>
                     ) : availableSlots.length === 0 ? (
