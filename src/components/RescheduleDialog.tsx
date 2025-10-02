@@ -248,6 +248,21 @@ export function RescheduleDialog({
 
       if (updateError) throw updateError;
 
+      // Send email notification (don't block on failure)
+      supabase.functions
+        .invoke('send-appointment-email', {
+          body: {
+            appointmentId,
+            type: 'appointment_rescheduled'
+          }
+        })
+        .then((emailResult) => {
+          if (emailResult.error) {
+            console.error('[Email] Error sending reschedule notification:', emailResult.error);
+          }
+        })
+        .catch((err) => console.error('[Email] Failed to send reschedule notification:', err));
+
       toast({
         title: "Sucesso!",
         description: "Agendamento alterado com sucesso",

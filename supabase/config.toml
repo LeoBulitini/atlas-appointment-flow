@@ -3,6 +3,9 @@ project_id = "llcuxomhvxfvqvjozbtg"
 [functions.complete-appointments]
 verify_jwt = false
 
+[functions.send-appointment-email]
+verify_jwt = true
+
 [edge-runtime]
 policy = "per_worker"
 

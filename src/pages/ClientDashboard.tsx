@@ -92,6 +92,22 @@ const ClientDashboard = () => {
     try {
       const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", appointmentId);
       if (error) throw error;
+      
+      // Send email notification (don't block on failure)
+      supabase.functions
+        .invoke('send-appointment-email', {
+          body: {
+            appointmentId,
+            type: 'appointment_cancelled'
+          }
+        })
+        .then((emailResult) => {
+          if (emailResult.error) {
+            console.error('[Email] Error sending cancellation notification:', emailResult.error);
+          }
+        })
+        .catch((err) => console.error('[Email] Failed to send cancellation notification:', err));
+      
       toast({ title: "Agendamento cancelado", description: "Seu agendamento foi cancelado com sucesso." });
       fetchAppointments();
     } catch (error) {

@@ -494,10 +494,27 @@ const Booking = () => {
 
       if (servicesError) throw servicesError;
 
+      // Send email notification (don't block on failure)
+      supabase.functions
+        .invoke('send-appointment-email', {
+          body: {
+            appointmentId: resultData.appointment_id,
+            type: 'new_appointment'
+          }
+        })
+        .then((emailResult) => {
+          if (emailResult.error) {
+            console.error('[Email] Error sending notification:', emailResult.error);
+          } else {
+            console.log('[Email] Notification sent successfully');
+          }
+        })
+        .catch((err) => console.error('[Email] Failed to send notification:', err));
+
       toast({
         title: "Sucesso!",
         description: business.auto_confirm_appointments 
-          ? "Agendamento confirmado automaticamente!" 
+          ? "Agendamento confirmado automaticamente!"
           : "Agendamento realizado com sucesso",
       });
 

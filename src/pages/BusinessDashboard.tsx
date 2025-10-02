@@ -163,6 +163,24 @@ const BusinessDashboard = () => {
     try {
       const { error } = await supabase.from("appointments").update({ status }).eq("id", appointmentId);
       if (error) throw error;
+      
+      // Send email notification when confirming (don't block on failure)
+      if (status === "confirmed") {
+        supabase.functions
+          .invoke('send-appointment-email', {
+            body: {
+              appointmentId,
+              type: 'appointment_confirmed'
+            }
+          })
+          .then((emailResult) => {
+            if (emailResult.error) {
+              console.error('[Email] Error sending confirmation notification:', emailResult.error);
+            }
+          })
+          .catch((err) => console.error('[Email] Failed to send confirmation notification:', err));
+      }
+      
       toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });
       fetchBusinessData();
     } catch (error) {
@@ -173,7 +191,33 @@ const BusinessDashboard = () => {
 
   const handleCancelAppointment = async () => {
     if (!selectedAppointmentId) return;
-    await handleUpdateAppointmentStatus(selectedAppointmentId, "cancelled");
+    
+    try {
+      const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", selectedAppointmentId);
+      if (error) throw error;
+      
+      // Send email notification (don't block on failure)
+      supabase.functions
+        .invoke('send-appointment-email', {
+          body: {
+            appointmentId: selectedAppointmentId,
+            type: 'appointment_cancelled'
+          }
+        })
+        .then((emailResult) => {
+          if (emailResult.error) {
+            console.error('[Email] Error sending cancellation notification:', emailResult.error);
+          }
+        })
+        .catch((err) => console.error('[Email] Failed to send cancellation notification:', err));
+      
+      toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });
+      fetchBusinessData();
+    } catch (error) {
+      console.error("Error updating appointment:", error);
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o agendamento." });
+    }
+    
     setShowCancelDialog(false);
     setSelectedAppointmentId(null);
   };
