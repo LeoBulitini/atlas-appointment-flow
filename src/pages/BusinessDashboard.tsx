@@ -98,7 +98,7 @@ const BusinessDashboard = () => {
         
         setServices(servicesData || []);
 
-        // Fetch appointments
+        // Fetch appointments (excluindo cancelados)
         const { data: appointmentsData } = await supabase
           .from("appointments")
           .select(`
@@ -107,6 +107,7 @@ const BusinessDashboard = () => {
             services (name, price)
           `)
           .eq("business_id", businessData.id)
+          .neq("status", "cancelled")
           .order("appointment_date", { ascending: true });
 
         setAppointments(appointmentsData || []);
