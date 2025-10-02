@@ -68,7 +68,7 @@ const Booking = () => {
     if (selectedDate && business) {
       generateAvailableSlots();
     }
-  }, [selectedDate, business, bookedSlots]);
+  }, [selectedDate, business]);
 
   const fetchBusinessAndServices = async () => {
     try {
