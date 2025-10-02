@@ -219,7 +219,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -267,7 +267,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -306,7 +306,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -330,7 +330,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -370,7 +370,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -397,7 +397,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -409,7 +409,7 @@ function generateEmailContent(
       clientHtml = `
         ${baseStyle}
         <div class="container">
-          <div class="header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+          <div class="header">
             <h1>❌ Agendamento Cancelado</h1>
           </div>
           <div class="content">
@@ -429,7 +429,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -439,7 +439,7 @@ function generateEmailContent(
       businessHtml = `
         ${baseStyle}
         <div class="container">
-          <div class="header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+          <div class="header">
             <h1>❌ Agendamento Cancelado</h1>
           </div>
           <div class="content">
@@ -456,7 +456,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -496,7 +496,7 @@ function generateEmailContent(
               <p style="margin-bottom: 10px;"><strong>${business.name}</strong></p>
               <p>${business.address}, ${business.city} - ${business.state}</p>
               <p>📞 ${business.phone}</p>
-              <p style="margin-top: 15px; color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="margin-top: 15px; color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
@@ -528,7 +528,7 @@ function generateEmailContent(
             
             <div class="footer">
               <p>Este é um e-mail automático, por favor não responda.</p>
-              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
             </div>
           </div>
         </div>
