@@ -164,7 +164,7 @@ const BusinessDashboard = () => {
       const { error } = await supabase.from("appointments").update({ status }).eq("id", appointmentId);
       if (error) throw error;
       
-      // Send email notification when confirming (don't block on failure)
+      // Send email notification (don't block on failure)
       if (status === "confirmed") {
         supabase.functions
           .invoke('send-appointment-email', {
@@ -179,6 +179,22 @@ const BusinessDashboard = () => {
             }
           })
           .catch((err) => console.error('[Email] Failed to send confirmation notification:', err));
+      }
+      
+      if (status === "completed") {
+        supabase.functions
+          .invoke('send-appointment-email', {
+            body: {
+              appointmentId,
+              type: 'appointment_completed'
+            }
+          })
+          .then((emailResult) => {
+            if (emailResult.error) {
+              console.error('[Email] Error sending completion notification:', emailResult.error);
+            }
+          })
+          .catch((err) => console.error('[Email] Failed to send completion notification:', err));
       }
       
       toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });

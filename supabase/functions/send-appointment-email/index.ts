@@ -11,7 +11,7 @@ const corsHeaders = {
 
 interface EmailRequest {
   appointmentId: string;
-  type: 'new_appointment' | 'appointment_confirmed' | 'appointment_rescheduled' | 'appointment_cancelled';
+  type: 'new_appointment' | 'appointment_confirmed' | 'appointment_rescheduled' | 'appointment_cancelled' | 'appointment_completed';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to client
     const clientEmailResponse = await resend.emails.send({
-      from: "AgendaFácil <onboarding@resend.dev>",
+      from: "AgendaFácil <contato@atlasbook.com.br>",
       to: [client.email],
       subject: clientSubject,
       html: clientHtml,
@@ -108,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
     let businessEmailResponse = null;
     if (business.email) {
       businessEmailResponse = await resend.emails.send({
-        from: "AgendaFácil <onboarding@resend.dev>",
+        from: "AgendaFácil <contato@atlasbook.com.br>",
         to: [business.email],
         subject: businessSubject,
         html: businessHtml,
@@ -452,6 +452,78 @@ function generateEmailContent(
               
               <h4 style="margin-top: 20px;">Serviços:</h4>
               <ul>${servicesHtml}</ul>
+            </div>
+            
+            <div class="footer">
+              <p>Este é um e-mail automático, por favor não responda.</p>
+              <p style="color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+
+    case 'appointment_completed':
+      clientSubject = `✅ Serviço Concluído - ${business.name}`;
+      clientHtml = `
+        ${baseStyle}
+        <div class="container">
+          <div class="header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+            <h1>✅ Serviço Concluído</h1>
+          </div>
+          <div class="content">
+            <p>Olá <strong>${client.full_name}</strong>,</p>
+            <p>Obrigado por escolher <strong>${business.name}</strong>! Seu atendimento foi concluído com sucesso.</p>
+            
+            <div class="info-box">
+              <h3>📋 Detalhes do Atendimento</h3>
+              <div class="info-row"><span class="label">Data:</span> ${appointmentDate}</div>
+              <div class="info-row"><span class="label">Horário:</span> ${appointmentTime}</div>
+              
+              <h4 style="margin-top: 20px;">Serviços Realizados:</h4>
+              <ul>${servicesHtml}</ul>
+              
+              <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div class="info-row"><span class="label">Valor Total:</span> <strong style="color: #11998e; font-size: 18px;">R$ ${totalPrice.toFixed(2)}</strong></div>
+              </div>
+            </div>
+            
+            <p style="margin-top: 30px;">Gostou do atendimento? Deixe sua avaliação e ajude outros clientes!</p>
+            
+            <p style="margin-top: 20px; color: #666;">Esperamos vê-lo novamente em breve! 💚</p>
+            
+            <div class="footer">
+              <p style="margin-bottom: 10px;"><strong>${business.name}</strong></p>
+              <p>${business.address}, ${business.city} - ${business.state}</p>
+              <p>📞 ${business.phone}</p>
+              <p style="margin-top: 15px; color: #999; font-size: 12px;">AgendaFácil - Sistema de Agendamentos</p>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      businessSubject = `✅ Atendimento Concluído - ${client.full_name}`;
+      businessHtml = `
+        ${baseStyle}
+        <div class="container">
+          <div class="header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+            <h1>✅ Atendimento Concluído</h1>
+          </div>
+          <div class="content">
+            <p>O atendimento de <strong>${client.full_name}</strong> foi marcado como concluído.</p>
+            
+            <div class="info-box">
+              <h3>📋 Detalhes</h3>
+              <div class="info-row"><span class="label">Cliente:</span> ${client.full_name}</div>
+              <div class="info-row"><span class="label">Data:</span> ${appointmentDate}</div>
+              <div class="info-row"><span class="label">Horário:</span> ${appointmentTime}</div>
+              
+              <h4 style="margin-top: 20px;">Serviços Realizados:</h4>
+              <ul>${servicesHtml}</ul>
+              
+              <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div class="info-row"><span class="label">Valor Total:</span> <strong style="color: #11998e; font-size: 18px;">R$ ${totalPrice.toFixed(2)}</strong></div>
+              </div>
             </div>
             
             <div class="footer">
