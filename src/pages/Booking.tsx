@@ -329,15 +329,12 @@ const Booking = () => {
             <Card>
               <CardHeader>
                 <CardTitle>{business.name}</CardTitle>
-                <CardDescription>
-                  <Badge variant="secondary">{business.category}</Badge>
+                <Badge variant="secondary" className="mt-2">{business.category}</Badge>
+                <CardDescription className="mt-2">
+                  {business.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {business.description && (
-                  <p className="text-sm text-muted-foreground">{business.description}</p>
-                )}
-                
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
@@ -408,22 +405,24 @@ const Booking = () => {
                         </p>
                       ) : (
                         services.map((service) => (
-                          <Card
+                          <label
                             key={service.id}
-                            className={`cursor-pointer transition-smooth ${
-                              selectedServices.includes(service.id)
-                                ? "ring-2 ring-primary"
-                                : "hover:shadow-md"
-                            }`}
-                            onClick={() => handleServiceToggle(service.id)}
+                            className="block cursor-pointer"
                           >
-                            <CardContent className="p-4">
-                              <div className="flex items-start gap-3">
-                                <Checkbox
-                                  checked={selectedServices.includes(service.id)}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                                <div className="flex-1">
+                            <Card
+                              className={`transition-smooth ${
+                                selectedServices.includes(service.id)
+                                  ? "ring-2 ring-primary"
+                                  : "hover:shadow-md"
+                              }`}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <Checkbox
+                                    checked={selectedServices.includes(service.id)}
+                                    onCheckedChange={() => handleServiceToggle(service.id)}
+                                  />
+                                  <div className="flex-1">
                                   <div className="flex justify-between items-start">
                                     <div>
                                       <h4 className="font-semibold">{service.name}</h4>
@@ -447,6 +446,7 @@ const Booking = () => {
                               </div>
                             </CardContent>
                           </Card>
+                          </label>
                         ))
                       )}
                     </div>
