@@ -301,7 +301,13 @@ export function RescheduleDialog({
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              disabled={(date) => date < new Date()}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const compareDate = new Date(date);
+                compareDate.setHours(0, 0, 0, 0);
+                return compareDate < today;
+              }}
               locale={ptBR}
               className="rounded-md border pointer-events-auto"
             />
