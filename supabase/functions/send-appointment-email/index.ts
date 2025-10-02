@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to client
     const clientEmailResponse = await resend.emails.send({
-      from: "AgendaFácil <contato@atlasbook.com.br>",
+      from: "AtlasBook - Agendamentos <contato@atlasbook.com.br>",
       to: [client.email],
       subject: clientSubject,
       html: clientHtml,
@@ -108,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
     let businessEmailResponse = null;
     if (business.email) {
       businessEmailResponse = await resend.emails.send({
-        from: "AgendaFácil <contato@atlasbook.com.br>",
+        from: "AtlasBook - Agendamentos <contato@atlasbook.com.br>",
         to: [business.email],
         subject: businessSubject,
         html: businessHtml,
