@@ -250,6 +250,33 @@ export default function BusinessClients() {
         return;
       }
 
+      // Criar registro em appointment_services para vincular o serviço
+      if (result.appointment_id) {
+        const { error: serviceError } = await supabase
+          .from('appointment_services')
+          .insert({
+            appointment_id: result.appointment_id,
+            service_id: selectedService
+          });
+
+        if (serviceError) {
+          console.error("Erro ao vincular serviço:", serviceError);
+        }
+
+        // Enviar email de confirmação
+        try {
+          await supabase.functions.invoke('send-appointment-email', {
+            body: {
+              appointmentId: result.appointment_id,
+              type: 'new_appointment'
+            }
+          });
+        } catch (emailError) {
+          console.error("Erro ao enviar email:", emailError);
+          // Não bloqueia o agendamento se o email falhar
+        }
+      }
+
       toast({
         title: "Agendamento criado!",
         description: `Agendamento para ${bookingClient.profiles.full_name} criado com sucesso.`,
