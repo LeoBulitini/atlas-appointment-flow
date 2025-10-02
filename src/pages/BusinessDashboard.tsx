@@ -316,7 +316,7 @@ const BusinessDashboard = () => {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                        <span>{new Date(appointment.appointment_date).toLocaleDateString("pt-BR")}</span>
+                        <span>{appointment.appointment_date.split('-').reverse().join('/')}</span>
                         <span>{appointment.appointment_time}</span>
                       </div>
                       {appointment.status === "pending" && (

@@ -316,11 +316,14 @@ const Booking = () => {
           p_client_id: user.id,
           p_appointment_date: format(selectedDate, "yyyy-MM-dd"),
           p_appointment_time: selectedTime,
-          p_end_time: format(endTime, "HH:mm"),
+          p_end_time: format(endTime, "HH:mm:ss"),
           p_notes: notes || null
         });
 
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        console.error('RPC Error:', rpcError);
+        throw rpcError;
+      }
 
       // Check if appointment was successfully created
       const resultData = result as { success: boolean; error?: string; message?: string; appointment_id?: string };
