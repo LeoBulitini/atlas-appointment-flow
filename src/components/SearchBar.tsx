@@ -60,6 +60,11 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
               <SelectItem value="Barbearia">Barbearia</SelectItem>
               <SelectItem value="Spa & Massagem">Spa & Massagem</SelectItem>
               <SelectItem value="Estética & Unhas">Estética & Unhas</SelectItem>
+              <SelectItem value="Maquiagem">Maquiagem</SelectItem>
+              <SelectItem value="Tatuagem">Tatuagem</SelectItem>
+              <SelectItem value="Nutricionista">Nutricionista</SelectItem>
+              <SelectItem value="Psicologia">Psicologia</SelectItem>
+              <SelectItem value="Estúdio de Tatuagem">Estúdio de Tatuagem</SelectItem>
             </SelectContent>
           </Select>
         </div>
