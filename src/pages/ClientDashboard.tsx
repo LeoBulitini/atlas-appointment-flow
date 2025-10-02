@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { format, parseISO } from "date-fns";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,10 +20,12 @@ interface Appointment {
     address: string;
     city: string;
   };
-  services: {
-    name: string;
-    price: number;
-  };
+  appointment_services: Array<{
+    services: {
+      name: string;
+      price: number;
+    };
+  }>;
 }
 
 const ClientDashboard = () => {
@@ -84,7 +87,9 @@ const ClientDashboard = () => {
         .select(`
           *,
           businesses (name, address, city),
-          services (name, price)
+          appointment_services (
+            services (name, price)
+          )
         `)
         .eq("client_id", user.id)
         .order("appointment_date", { ascending: true });
@@ -209,50 +214,61 @@ const ClientDashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {appointments.map((appointment) => (
-                  <div
-                    key={appointment.id}
-                    className="p-4 border rounded-lg hover:shadow-md transition-smooth"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{appointment.businesses.name}</h3>
-                        <p className="text-sm text-muted-foreground">{appointment.services.name}</p>
+                 {appointments.map((appointment) => {
+                  const totalPrice = appointment.appointment_services.reduce(
+                    (sum, as) => sum + Number(as.services.price), 
+                    0
+                  );
+                  
+                  return (
+                    <div
+                      key={appointment.id}
+                      className="p-4 border rounded-lg hover:shadow-md transition-smooth"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">{appointment.businesses.name}</h3>
+                          <div className="text-sm text-muted-foreground">
+                            {appointment.appointment_services.map((as, idx) => (
+                              <div key={idx}>• {as.services.name}</div>
+                            ))}
+                          </div>
+                        </div>
+                        {getStatusBadge(appointment.status)}
                       </div>
-                      {getStatusBadge(appointment.status)}
-                    </div>
 
-                    <div className="grid md:grid-cols-3 gap-3 mb-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{new Date(appointment.appointment_date).toLocaleDateString("pt-BR")}</span>
+                      <div className="grid md:grid-cols-3 gap-3 mb-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>{format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span>{appointment.appointment_time}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>{appointment.businesses.city}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{appointment.appointment_time}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{appointment.businesses.city}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex justify-between items-center pt-3 border-t">
-                      <span className="font-semibold text-primary">
-                        R$ {Number(appointment.services.price).toFixed(2)}
-                      </span>
-                      {appointment.status === "pending" && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleCancelAppointment(appointment.id)}
-                        >
-                          Cancelar
-                        </Button>
-                      )}
+                      <div className="flex justify-between items-center pt-3 border-t">
+                        <span className="font-semibold text-primary">
+                          Total: R$ {totalPrice.toFixed(2)}
+                        </span>
+                        {appointment.status === "pending" && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleCancelAppointment(appointment.id)}
+                          >
+                            Cancelar
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

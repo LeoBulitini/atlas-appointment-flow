@@ -356,15 +356,7 @@ const Booking = () => {
         return;
       }
 
-      // Update status if auto-confirm is enabled
-      if (business.auto_confirm_appointments) {
-        await supabase
-          .from("appointments")
-          .update({ status: 'confirmed' })
-          .eq("id", resultData.appointment_id);
-      }
-
-      // Insert all selected services
+      // Insert all selected services first
       const serviceInserts = selectedServices.map(serviceId => ({
         appointment_id: resultData.appointment_id,
         service_id: serviceId
@@ -376,9 +368,23 @@ const Booking = () => {
 
       if (servicesError) throw servicesError;
 
+      // Update status if auto-confirm is enabled (after inserting services)
+      if (business.auto_confirm_appointments) {
+        const { error: updateError } = await supabase
+          .from("appointments")
+          .update({ status: 'confirmed' })
+          .eq("id", resultData.appointment_id);
+        
+        if (updateError) {
+          console.error('Error auto-confirming:', updateError);
+        }
+      }
+
       toast({
         title: "Sucesso!",
-        description: "Agendamento realizado com sucesso",
+        description: business.auto_confirm_appointments 
+          ? "Agendamento confirmado automaticamente!" 
+          : "Agendamento realizado com sucesso",
       });
 
       navigate("/dashboard/client");
