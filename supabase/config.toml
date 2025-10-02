@@ -1,1 +1,10 @@
 project_id = "llcuxomhvxfvqvjozbtg"
+
+[functions.complete-appointments]
+verify_jwt = false
+
+[edge-runtime]
+policy = "per_worker"
+
+[functions.complete-appointments.cron]
+schedule = "*/15 * * * *"

@@ -44,7 +44,27 @@ const BusinessDashboard = () => {
   const [servicePrice, setServicePrice] = useState("");
 
   useEffect(() => {
-    fetchBusinessData();
+    const initDashboard = async () => {
+      // Verificar autenticação
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+
+      // Chamar função para completar agendamentos passados
+      try {
+        await supabase.functions.invoke('complete-appointments');
+        console.log('Complete appointments function called successfully');
+      } catch (error) {
+        console.error('Error calling complete-appointments:', error);
+      }
+
+      // Buscar dados do negócio
+      fetchBusinessData();
+    };
+
+    initDashboard();
 
     const appointmentsChannel = supabase
       .channel("business-appointments-changes")
