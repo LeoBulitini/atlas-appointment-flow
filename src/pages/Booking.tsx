@@ -164,23 +164,42 @@ const Booking = () => {
     // Fetch booked appointments for this date
     const { data: appointments } = await supabase
       .from("appointments")
-      .select("appointment_time, end_time")
+      .select("appointment_time, end_time, status")
       .eq("business_id", businessId)
       .eq("appointment_date", format(selectedDate, "yyyy-MM-dd"))
       .in("status", ["pending", "confirmed"]);
 
+    console.log("Appointments encontrados para", format(selectedDate, "yyyy-MM-dd"), ":", appointments);
+
     const booked: string[] = [];
     appointments?.forEach(apt => {
       if (apt.appointment_time && apt.end_time) {
-        const startTime = parse(apt.appointment_time, "HH:mm", new Date());
-        const endTime = parse(apt.end_time, "HH:mm", new Date());
+        // O Supabase retorna time no formato HH:mm:ss, então vamos fazer parse considerando isso
+        const timeFormat = apt.appointment_time.length > 5 ? "HH:mm:ss" : "HH:mm";
+        const endTimeFormat = apt.end_time.length > 5 ? "HH:mm:ss" : "HH:mm";
+        
+        const startTime = parse(apt.appointment_time, timeFormat, new Date());
+        const endTime = parse(apt.end_time, endTimeFormat, new Date());
+        
+        console.log("Processando appointment:", {
+          time: apt.appointment_time,
+          endTime: apt.end_time,
+          status: apt.status,
+          parsedStart: format(startTime, "HH:mm"),
+          parsedEnd: format(endTime, "HH:mm")
+        });
+        
         let current = startTime;
         while (current < endTime) {
-          booked.push(format(current, "HH:mm"));
+          const slotTime = format(current, "HH:mm");
+          booked.push(slotTime);
+          console.log("Marcando como ocupado:", slotTime);
           current = addMinutes(current, 15);
         }
       }
     });
+    
+    console.log("Slots ocupados:", booked);
     setBookedSlots(booked);
 
     // Get total duration of selected services
