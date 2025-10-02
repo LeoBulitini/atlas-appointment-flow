@@ -5,19 +5,18 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, DollarSign, Plus } from "lucide-react";
+import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { formatPhoneNumber } from "@/lib/phone-utils";
+import { format, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const BusinessDashboard = () => {
   const navigate = useNavigate();
@@ -27,6 +26,12 @@ const BusinessDashboard = () => {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showServiceDialog, setShowServiceDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+    from: startOfDay(new Date()),
+    to: endOfDay(new Date(new Date().setDate(new Date().getDate() + 30))),
+  });
 
   // Service form state
   const [serviceName, setServiceName] = useState("");
@@ -39,32 +44,16 @@ const BusinessDashboard = () => {
 
     const appointmentsChannel = supabase
       .channel("business-appointments-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "appointments",
-        },
-        () => {
-          fetchBusinessData();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
+        fetchBusinessData();
+      })
       .subscribe();
 
     const servicesChannel = supabase
       .channel("services-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "services",
-        },
-        () => {
-          fetchBusinessData();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => {
+        fetchBusinessData();
+      })
       .subscribe();
 
     return () => {
@@ -78,7 +67,6 @@ const BusinessDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch business
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
         .select("*")
@@ -90,7 +78,6 @@ const BusinessDashboard = () => {
       if (businessData) {
         setBusiness(businessData);
 
-        // Fetch services
         const { data: servicesData } = await supabase
           .from("services")
           .select("*")
@@ -98,14 +85,9 @@ const BusinessDashboard = () => {
         
         setServices(servicesData || []);
 
-        // Fetch appointments (excluindo cancelados)
         const { data: appointmentsData } = await supabase
           .from("appointments")
-          .select(`
-            *,
-            profiles (full_name, phone),
-            services (name, price)
-          `)
+          .select(`*, profiles (full_name, phone), services (name, price)`)
           .eq("business_id", businessData.id)
           .neq("status", "cancelled")
           .order("appointment_date", { ascending: true });
@@ -114,11 +96,7 @@ const BusinessDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching business data:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível carregar os dados da empresa.",
-      });
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os dados da empresa." });
     } finally {
       setLoading(false);
     }
@@ -139,11 +117,7 @@ const BusinessDashboard = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Serviço adicionado!",
-        description: "Seu serviço foi criado com sucesso.",
-      });
-
+      toast({ title: "Serviço adicionado!", description: "Seu serviço foi criado com sucesso." });
       setShowServiceDialog(false);
       setServiceName("");
       setServiceDescription("");
@@ -151,41 +125,123 @@ const BusinessDashboard = () => {
       setServicePrice("");
       fetchBusinessData();
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Erro", description: error.message });
     }
   };
 
-  const handleUpdateAppointmentStatus = async (
-    appointmentId: string, 
-    status: "pending" | "confirmed" | "completed" | "cancelled"
-  ) => {
+  const handleUpdateAppointmentStatus = async (appointmentId: string, status: "confirmed" | "completed" | "cancelled") => {
     try {
-      const { error } = await supabase
-        .from("appointments")
-        .update({ status })
-        .eq("id", appointmentId);
-
+      const { error } = await supabase.from("appointments").update({ status }).eq("id", appointmentId);
       if (error) throw error;
-
-      toast({
-        title: "Status atualizado",
-        description: "O status do agendamento foi atualizado.",
-      });
-
+      toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });
       fetchBusinessData();
     } catch (error) {
       console.error("Error updating appointment:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível atualizar o agendamento.",
-      });
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o agendamento." });
     }
   };
+
+  const handleCancelAppointment = async () => {
+    if (!selectedAppointmentId) return;
+    await handleUpdateAppointmentStatus(selectedAppointmentId, "cancelled");
+    setShowCancelDialog(false);
+    setSelectedAppointmentId(null);
+  };
+
+  const handleWhatsApp = (phone: string, clientName: string) => {
+    const formattedPhone = phone.replace(/\D/g, "");
+    const message = encodeURIComponent(`Olá ${clientName}, tudo bem? Aqui é da ${business?.name}!`);
+    window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
+  };
+
+  const handleCopyShareLink = () => {
+    const link = `${window.location.origin}/booking/${business.id}`;
+    navigator.clipboard.writeText(link);
+    toast({ title: "Link copiado!", description: "O link de agendamento foi copiado para a área de transferência." });
+  };
+
+  const todayAppointments = appointments.filter(
+    (app) => format(parseISO(app.appointment_date), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+  );
+
+  const filteredAppointments = appointments.filter((app) => {
+    const appDate = parseISO(app.appointment_date);
+    return isWithinInterval(appDate, { start: dateRange.from, end: dateRange.to });
+  });
+
+  const completedAppointments = appointments.filter((app) => app.status === "completed");
+  const totalRevenue = completedAppointments.reduce((sum, app) => sum + Number(app.services?.price || 0), 0);
+
+  const getStatusBadge = (status: string) => {
+    const statusMap: any = {
+      pending: { label: "Pendente", className: "bg-yellow-500" },
+      confirmed: { label: "Confirmado", className: "bg-green-500" },
+      completed: { label: "Concluído", className: "bg-blue-500" },
+      cancelled: { label: "Cancelado", className: "bg-gray-500" },
+    };
+    const statusInfo = statusMap[status] || statusMap.pending;
+    return <Badge className={statusInfo.className}>{statusInfo.label}</Badge>;
+  };
+
+  const renderAppointmentCard = (appointment: any) => (
+    <Card key={appointment.id} className="mb-4">
+      <CardContent className="pt-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1">
+            <p className="font-semibold text-lg">{appointment.profiles?.full_name}</p>
+            <p className="text-sm text-muted-foreground">{appointment.services?.name}</p>
+            <div className="flex items-center gap-4 mt-2 text-sm">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {appointment.appointment_time}
+              </span>
+              <span className="flex items-center gap-1">
+                <DollarSign className="h-4 w-4" />
+                R$ {Number(appointment.services?.price).toFixed(2)}
+              </span>
+            </div>
+          </div>
+          {getStatusBadge(appointment.status)}
+        </div>
+
+        <div className="flex gap-2 flex-wrap">
+          {appointment.status === "pending" && (
+            <Button size="sm" onClick={() => handleUpdateAppointmentStatus(appointment.id, "confirmed")}>
+              Confirmar
+            </Button>
+          )}
+          {(appointment.status === "pending" || appointment.status === "confirmed") && (
+            <>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  setSelectedAppointmentId(appointment.id);
+                  setShowCancelDialog(true);
+                }}
+              >
+                Cancelar
+              </Button>
+              {appointment.profiles?.phone && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleWhatsApp(appointment.profiles.phone, appointment.profiles.full_name)}
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   if (loading) {
     return (
@@ -201,9 +257,7 @@ const BusinessDashboard = () => {
         <Header />
         <main className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-3xl font-bold mb-4">Configure sua Empresa</h1>
-          <p className="text-muted-foreground mb-8">
-            Você ainda não tem uma empresa cadastrada. Complete seu perfil para começar!
-          </p>
+          <p className="text-muted-foreground mb-8">Você ainda não tem uma empresa cadastrada. Complete seu perfil para começar!</p>
           <Button onClick={() => navigate("/business/setup")}>Cadastrar Empresa</Button>
         </main>
       </div>
@@ -215,19 +269,29 @@ const BusinessDashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">Dashboard da Empresa</h1>
             <p className="text-muted-foreground">{business.name}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={handleCopyShareLink}>
+              <LinkIcon className="mr-2 h-4 w-4" />
+              Copiar Link
+            </Button>
+            <Button onClick={() => navigate("/business/analytics")}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Relatórios
+            </Button>
+            <Button onClick={() => navigate("/business/reviews")}>
+              <Star className="mr-2 h-4 w-4" />
+              Avaliações
+            </Button>
             <Button onClick={() => navigate("/business/clients")}>
               <Users className="mr-2 h-4 w-4" />
               Clientes
             </Button>
-            <Button onClick={() => navigate("/business/settings")}>
-              Configurações
-            </Button>
+            <Button onClick={() => navigate("/business/settings")}>Configurações</Button>
           </div>
         </div>
 
@@ -236,11 +300,11 @@ const BusinessDashboard = () => {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Agendamentos
+                Agendamentos Hoje
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-primary">{appointments.length}</p>
+              <p className="text-3xl font-bold text-primary">{todayAppointments.length}</p>
             </CardContent>
           </Card>
 
@@ -274,78 +338,126 @@ const BusinessDashboard = () => {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
-                Receita
+                Receita Total
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-600">
-                R$ {appointments
-                  .filter((a) => a.status === "completed")
-                  .reduce((sum, a) => sum + Number(a.services.price), 0)
-                  .toFixed(2)}
-              </p>
+              <p className="text-3xl font-bold text-green-600">R$ {totalRevenue.toFixed(2)}</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid md:grid-cols-1 gap-6">
-          <Card>
+        {todayAppointments.length > 0 && (
+          <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Agendamentos Recentes</CardTitle>
+              <CardTitle>Agendamentos de Hoje</CardTitle>
             </CardHeader>
             <CardContent>
-              {appointments.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum agendamento ainda
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {appointments.slice(0, 5).map((appointment) => (
-                    <div key={appointment.id} className="p-3 border rounded-lg">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-semibold">{appointment.profiles.full_name}</h4>
-                          <p className="text-sm text-muted-foreground">{appointment.services.name}</p>
-                        </div>
-                        <Badge className={
-                          appointment.status === "confirmed" ? "bg-green-500" :
-                          appointment.status === "pending" ? "bg-yellow-500" :
-                          appointment.status === "completed" ? "bg-blue-500" :
-                          "bg-gray-500"
-                        }>
-                          {appointment.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                        <span>{appointment.appointment_date.split('-').reverse().join('/')}</span>
-                        <span>{appointment.appointment_time}</span>
-                      </div>
-                      {appointment.status === "pending" && (
-                        <div className="flex gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleUpdateAppointmentStatus(appointment.id, "confirmed")}
-                          >
-                            Confirmar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleUpdateAppointmentStatus(appointment.id, "cancelled")}
-                          >
-                            Recusar
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {todayAppointments.map(renderAppointmentCard)}
             </CardContent>
           </Card>
-        </div>
+        )}
+
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Agendamentos</CardTitle>
+            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="upcoming">
+              <TabsList className="mb-4">
+                <TabsTrigger value="upcoming">Próximos</TabsTrigger>
+                <TabsTrigger value="history">Histórico</TabsTrigger>
+              </TabsList>
+              <TabsContent value="upcoming">
+                {filteredAppointments
+                  .filter((a) => a.status !== "completed" && parseISO(a.appointment_date) >= new Date())
+                  .map(renderAppointmentCard)}
+              </TabsContent>
+              <TabsContent value="history">
+                {filteredAppointments
+                  .filter((a) => a.status === "completed" || parseISO(a.appointment_date) < new Date())
+                  .map(renderAppointmentCard)}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Serviços</CardTitle>
+            <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" />Adicionar Serviço</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Serviço</DialogTitle>
+                  <DialogDescription>Adicione um novo serviço ao seu catálogo</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddService} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Nome do Serviço</Label>
+                    <Input id="name" value={serviceName} onChange={(e) => setServiceName(e.target.value)} required />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea id="description" value={serviceDescription} onChange={(e) => setServiceDescription(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="duration">Duração (min)</Label>
+                      <Input
+                        id="duration"
+                        type="number"
+                        value={serviceDuration}
+                        onChange={(e) => setServiceDuration(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="price">Preço (R$)</Label>
+                      <Input id="price" type="number" step="0.01" value={servicePrice} onChange={(e) => setServicePrice(e.target.value)} required />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full">Salvar Serviço</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-4">
+              {services.map((service) => (
+                <Card key={service.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{service.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-2">{service.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Duração: {service.duration_minutes} min</span>
+                      <span className="font-bold">R$ {Number(service.price).toFixed(2)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </main>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Agendamento</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelAppointment}>Cancelar Agendamento</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

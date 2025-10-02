@@ -402,6 +402,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_past_appointments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       create_appointment_if_available: {
         Args:
           | {
