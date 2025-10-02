@@ -70,6 +70,34 @@ const Booking = () => {
     }
   }, [selectedDate, business, selectedServices]);
 
+  // Real-time updates: refresh available slots when new appointments are made
+  useEffect(() => {
+    if (!businessId) return;
+
+    const channel = supabase
+      .channel('appointments-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'appointments',
+          filter: `business_id=eq.${businessId}`
+        },
+        () => {
+          // Reload available slots when someone books
+          if (selectedDate && business) {
+            generateAvailableSlots();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [businessId, selectedDate, business]);
+
   const fetchBusinessAndServices = async () => {
     try {
       const { data: businessData, error: businessError } = await supabase
@@ -280,26 +308,45 @@ const Booking = () => {
       const startTime = parse(selectedTime, "HH:mm", new Date());
       const endTime = addMinutes(startTime, totalDuration);
 
-      const { data: appointmentData, error: appointmentError } = await supabase
-        .from("appointments")
-        .insert({
-          business_id: businessId,
-          service_id: selectedServices[0], // Primary service for compatibility
-          client_id: user.id,
-          appointment_date: format(selectedDate, "yyyy-MM-dd"),
-          appointment_time: selectedTime,
-          end_time: format(endTime, "HH:mm"),
-          notes,
-          status: "pending",
-        })
-        .select()
-        .single();
+      // Use atomic function to create appointment with conflict checking
+      const { data: result, error: rpcError } = await supabase
+        .rpc('create_appointment_if_available', {
+          p_business_id: businessId,
+          p_service_id: selectedServices[0], // Primary service for compatibility
+          p_client_id: user.id,
+          p_appointment_date: format(selectedDate, "yyyy-MM-dd"),
+          p_appointment_time: selectedTime,
+          p_end_time: format(endTime, "HH:mm"),
+          p_notes: notes || null
+        });
 
-      if (appointmentError) throw appointmentError;
+      if (rpcError) throw rpcError;
+
+      // Check if appointment was successfully created
+      const resultData = result as { success: boolean; error?: string; message?: string; appointment_id?: string };
+      
+      if (!resultData || !resultData.success) {
+        if (resultData?.error === 'conflict') {
+          toast({
+            title: "Horário Indisponível",
+            description: "Este horário acabou de ser reservado. Por favor, escolha outro horário.",
+            variant: "destructive",
+          });
+          // Regenerate available slots
+          generateAvailableSlots();
+        } else {
+          toast({
+            title: "Erro",
+            description: resultData?.message || "Erro ao criar agendamento",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
 
       // Insert all selected services
       const serviceInserts = selectedServices.map(serviceId => ({
-        appointment_id: appointmentData.id,
+        appointment_id: resultData.appointment_id,
         service_id: serviceId
       }));
 
