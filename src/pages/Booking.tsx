@@ -169,37 +169,26 @@ const Booking = () => {
       .eq("appointment_date", format(selectedDate, "yyyy-MM-dd"))
       .in("status", ["pending", "confirmed"]);
 
-    console.log("Appointments encontrados para", format(selectedDate, "yyyy-MM-dd"), ":", appointments);
-
     const booked: string[] = [];
     appointments?.forEach(apt => {
       if (apt.appointment_time && apt.end_time) {
-        // O Supabase retorna time no formato HH:mm:ss, então vamos fazer parse considerando isso
-        const timeFormat = apt.appointment_time.length > 5 ? "HH:mm:ss" : "HH:mm";
-        const endTimeFormat = apt.end_time.length > 5 ? "HH:mm:ss" : "HH:mm";
+        // O Supabase retorna time no formato HH:mm:ss, então precisamos detectar automaticamente
+        const timeFormat = apt.appointment_time.includes(':') && apt.appointment_time.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
+        const endTimeFormat = apt.end_time.includes(':') && apt.end_time.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
         
         const startTime = parse(apt.appointment_time, timeFormat, new Date());
         const endTime = parse(apt.end_time, endTimeFormat, new Date());
         
-        console.log("Processando appointment:", {
-          time: apt.appointment_time,
-          endTime: apt.end_time,
-          status: apt.status,
-          parsedStart: format(startTime, "HH:mm"),
-          parsedEnd: format(endTime, "HH:mm")
-        });
-        
+        // Marca todos os slots de 15 minutos entre o início e fim do agendamento como ocupados
         let current = startTime;
         while (current < endTime) {
-          const slotTime = format(current, "HH:mm");
-          booked.push(slotTime);
-          console.log("Marcando como ocupado:", slotTime);
+          booked.push(format(current, "HH:mm"));
           current = addMinutes(current, 15);
         }
       }
     });
     
-    console.log("Slots ocupados:", booked);
+    console.log(`[${format(selectedDate, "dd/MM")}] Horários bloqueados:`, booked);
     setBookedSlots(booked);
 
     // Get total duration of selected services
