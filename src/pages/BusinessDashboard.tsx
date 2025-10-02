@@ -341,25 +341,17 @@ const BusinessDashboard = () => {
               </div>
               <div className="flex flex-col items-end gap-2">
                 {getStatusBadge(appointment.status)}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-9 px-3"
-                  onClick={() => {
-                    if (appointment.profiles?.phone) {
-                      handleWhatsApp(appointment.profiles.phone, appointment.profiles.full_name);
-                    } else {
-                      toast({
-                        title: "Telefone não cadastrado",
-                        description: "Este cliente não possui telefone cadastrado no perfil.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  WhatsApp
-                </Button>
+                {appointment.profiles?.phone && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9 px-3"
+                    onClick={() => handleWhatsApp(appointment.profiles.phone, appointment.profiles.full_name)}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-1" />
+                    WhatsApp
+                  </Button>
+                )}
               </div>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">

@@ -3,9 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Phone } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Phone, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -29,15 +37,39 @@ interface Appointment {
   };
 }
 
+interface Service {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price: number;
+}
+
+interface Business {
+  id: string;
+  auto_confirm_appointments: boolean;
+  opening_hours: any;
+}
+
 export default function BusinessClients() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<Service[]>([]);
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const [bookingClient, setBookingClient] = useState<Client | null>(null);
+  const [selectedService, setSelectedService] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     fetchClients();
+    fetchBusinessAndServices();
   }, []);
 
   const fetchClients = async () => {
@@ -108,9 +140,136 @@ export default function BusinessClients() {
     setSelectedClient(clientId);
   };
 
+  const fetchBusinessAndServices = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: businessData } = await supabase
+      .from("businesses")
+      .select("id, auto_confirm_appointments, opening_hours")
+      .eq("owner_id", user.id)
+      .single();
+
+    if (businessData) {
+      setBusiness(businessData);
+      
+      const { data: servicesData } = await supabase
+        .from("services")
+        .select("id, name, duration_minutes, price")
+        .eq("business_id", businessData.id)
+        .eq("is_active", true);
+      
+      if (servicesData) {
+        setServices(servicesData);
+      }
+    }
+  };
+
   const handleWhatsApp = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanPhone}`, '_blank');
+  };
+
+  const openBookingDialog = (client: Client) => {
+    setBookingClient(client);
+    setSelectedService("");
+    setSelectedDate(undefined);
+    setSelectedTime("");
+    setNotes("");
+    setBookingDialogOpen(true);
+  };
+
+  const getAvailableTimes = () => {
+    if (!selectedDate || !business?.opening_hours) return [];
+    
+    const dayOfWeek = selectedDate.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+    const hours = business.opening_hours[dayName];
+    
+    if (!hours || !hours.isOpen) return [];
+    
+    const times: string[] = [];
+    const [startHour, startMinute] = hours.start.split(':').map(Number);
+    const [endHour, endMinute] = hours.end.split(':').map(Number);
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        if (hour === startHour && minute < startMinute) continue;
+        if (hour === endHour - 1 && minute >= endMinute) break;
+        
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        times.push(timeString);
+      }
+    }
+    
+    return times;
+  };
+
+  const handleBookAppointment = async () => {
+    if (!bookingClient || !selectedService || !selectedDate || !selectedTime || !business) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBookingLoading(true);
+
+    try {
+      const service = services.find(s => s.id === selectedService);
+      if (!service) throw new Error("Serviço não encontrado");
+
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const endTime = new Date(0, 0, 0, hours, minutes + service.duration_minutes);
+      const endTimeString = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+
+      const { data, error } = await supabase.rpc('create_appointment_if_available', {
+        p_business_id: business.id,
+        p_service_id: selectedService,
+        p_client_id: bookingClient.client_id,
+        p_appointment_date: format(selectedDate, 'yyyy-MM-dd'),
+        p_appointment_time: selectedTime,
+        p_end_time: endTimeString,
+        p_notes: notes || null,
+        p_auto_confirm: business.auto_confirm_appointments
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; message?: string; appointment_id?: string };
+      
+      if (result && !result.success) {
+        toast({
+          title: "Horário indisponível",
+          description: result.message || "Este horário já está ocupado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Agendamento criado!",
+        description: `Agendamento para ${bookingClient.profiles.full_name} criado com sucesso.`,
+      });
+
+      setBookingDialogOpen(false);
+      fetchClients();
+      if (selectedClient) {
+        fetchClientAppointments(selectedClient);
+      }
+    } catch (error) {
+      console.error("Erro ao criar agendamento:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar o agendamento. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   if (loading) {
@@ -146,7 +305,7 @@ export default function BusinessClients() {
                     }`}
                     onClick={() => fetchClientAppointments(client.client_id)}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <h3 className="font-semibold">{client.profiles.full_name}</h3>
                         <p className="text-sm text-muted-foreground">
@@ -157,19 +316,32 @@ export default function BusinessClients() {
                           {format(new Date(client.last_appointment_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                         </p>
                       </div>
-                      {client.profiles.phone && (
+                      <div className="flex flex-col gap-2">
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="default"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleWhatsApp(client.profiles.phone);
+                            openBookingDialog(client);
                           }}
                         >
-                          <Phone className="h-4 w-4 mr-2" />
-                          WhatsApp
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          Agendar
                         </Button>
-                      )}
+                        {client.profiles.phone && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleWhatsApp(client.profiles.phone);
+                            }}
+                          >
+                            <Phone className="h-4 w-4 mr-2" />
+                            WhatsApp
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -228,6 +400,104 @@ export default function BusinessClients() {
             </CardContent>
           </Card>
         </div>
+
+        <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Agendar para {bookingClient?.profiles.full_name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="service">Serviço *</Label>
+                <Select value={selectedService} onValueChange={setSelectedService}>
+                  <SelectTrigger id="service">
+                    <SelectValue placeholder="Selecione um serviço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {services.map((service) => (
+                      <SelectItem key={service.id} value={service.id}>
+                        {service.name} - R$ {service.price.toFixed(2)} ({service.duration_minutes}min)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Data *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !selectedDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione uma data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="time">Horário *</Label>
+                <Select value={selectedTime} onValueChange={setSelectedTime} disabled={!selectedDate}>
+                  <SelectTrigger id="time">
+                    <SelectValue placeholder="Selecione um horário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableTimes().map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Observações</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Observações sobre o agendamento..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setBookingDialogOpen(false)}
+                  disabled={bookingLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleBookAppointment}
+                  disabled={bookingLoading}
+                >
+                  {bookingLoading ? "Agendando..." : "Confirmar Agendamento"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
