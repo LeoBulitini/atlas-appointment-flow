@@ -52,35 +52,42 @@ export default function BusinessAnalytics() {
 
     setBusinessId(business.id);
 
-    // Fetch completed appointments with services
+    // Fetch completed appointments
     const { data: appointments } = await supabase
       .from("appointments")
       .select(`
         id,
         client_id,
         appointment_time,
-        service_id,
-        services (name, price),
         profiles!client_id (full_name)
       `)
       .eq("business_id", business.id)
       .eq("status", "completed");
 
-    if (appointments) {
+    // Fetch all appointment services for completed appointments
+    const { data: appointmentServices } = await supabase
+      .from("appointment_services")
+      .select(`
+        appointment_id,
+        services (name, price)
+      `)
+      .in("appointment_id", appointments?.map(a => a.id) || []);
+
+    if (appointments && appointmentServices) {
       // Calculate total clients (unique)
       const uniqueClients = new Set(appointments.map(a => a.client_id)).size;
 
-      // Calculate total revenue
-      const revenue = appointments.reduce((sum, a) => sum + Number(a.services?.price || 0), 0);
+      // Calculate total revenue (sum of all services in all appointments)
+      const revenue = appointmentServices.reduce((sum, as) => sum + Number(as.services?.price || 0), 0);
 
-      // Top services
+      // Top services - now counting each service individually
       const serviceMap = new Map<string, { count: number; revenue: number }>();
-      appointments.forEach(a => {
-        if (a.services) {
-          const existing = serviceMap.get(a.services.name) || { count: 0, revenue: 0 };
-          serviceMap.set(a.services.name, {
+      appointmentServices.forEach(as => {
+        if (as.services) {
+          const existing = serviceMap.get(as.services.name) || { count: 0, revenue: 0 };
+          serviceMap.set(as.services.name, {
             count: existing.count + 1,
-            revenue: existing.revenue + Number(a.services.price),
+            revenue: existing.revenue + Number(as.services.price),
           });
         }
       });
@@ -181,7 +188,7 @@ export default function BusinessAnalytics() {
                 {analytics.topServices[0]?.name || "N/A"}
               </div>
               <p className="text-xs text-muted-foreground">
-                {analytics.topServices[0]?.count || 0} agendamentos
+                {analytics.topServices[0]?.count || 0} vezes realizado
               </p>
             </CardContent>
           </Card>
