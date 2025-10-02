@@ -99,7 +99,6 @@ const BusinessDashboard = () => {
             )
           `)
           .eq("business_id", businessData.id)
-          .neq("status", "cancelled")
           .order("appointment_date", { ascending: true });
 
         setAppointments(appointmentsData || []);
@@ -171,7 +170,7 @@ const BusinessDashboard = () => {
   };
 
   const todayAppointments = appointments.filter(
-    (app) => format(parseISO(app.appointment_date), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+    (app) => app.status !== "cancelled" && format(parseISO(app.appointment_date), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
   );
 
   const filteredAppointments = appointments.filter((app) => {
@@ -185,6 +184,8 @@ const BusinessDashboard = () => {
       serviceSum + Number(as.services?.price || 0), 0) || 0;
     return sum + appointmentTotal;
   }, 0);
+
+  const cancelledAppointments = filteredAppointments.filter((app) => app.status === "cancelled");
 
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
@@ -356,6 +357,20 @@ const BusinessDashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
+                <X className="h-5 w-5" />
+                Cancelados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-gray-600">
+                {appointments.filter((a) => a.status === "cancelled").length}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
                 Receita Total
               </CardTitle>
@@ -387,16 +402,26 @@ const BusinessDashboard = () => {
               <TabsList className="mb-4">
                 <TabsTrigger value="upcoming">Próximos</TabsTrigger>
                 <TabsTrigger value="history">Histórico</TabsTrigger>
+                <TabsTrigger value="cancelled">Cancelados</TabsTrigger>
               </TabsList>
               <TabsContent value="upcoming">
                 {filteredAppointments
-                  .filter((a) => a.status !== "completed" && parseISO(a.appointment_date) >= new Date())
+                  .filter((a) => a.status !== "completed" && a.status !== "cancelled" && parseISO(a.appointment_date) >= new Date())
                   .map(renderAppointmentCard)}
               </TabsContent>
               <TabsContent value="history">
                 {filteredAppointments
-                  .filter((a) => a.status === "completed" || parseISO(a.appointment_date) < new Date())
+                  .filter((a) => a.status === "completed" || (parseISO(a.appointment_date) < new Date() && a.status !== "cancelled"))
                   .map(renderAppointmentCard)}
+              </TabsContent>
+              <TabsContent value="cancelled">
+                {cancelledAppointments.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    Nenhum agendamento cancelado
+                  </div>
+                ) : (
+                  cancelledAppointments.map(renderAppointmentCard)
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>
