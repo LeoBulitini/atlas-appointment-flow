@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -114,6 +115,7 @@ const Header = () => {
                 </Button>
               </>
             )}
+            <ThemeToggle />
           </nav>
 
           {/* Mobile Menu Button */}
@@ -127,7 +129,7 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <nav className="flex flex-col gap-2 py-4 md:hidden">
+          <nav className="flex flex-col gap-2 py-4 md:hidden border-t">
             <Button variant="ghost" className="justify-start" onClick={() => navigate("/")}>
               Explorar
             </Button>
@@ -152,6 +154,10 @@ const Header = () => {
                 </Button>
               </>
             )}
+            <div className="px-3 py-2 flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Tema:</span>
+              <ThemeToggle />
+            </div>
           </nav>
         )}
       </div>

@@ -123,7 +123,7 @@ const Index = () => {
             filter: 'blur(4px)',
           }}
         />
-        <div className="absolute inset-0 z-0 bg-primary/85" />
+        <div className="absolute inset-0 z-0 bg-primary/85 dark:bg-primary/75" />
         
         {/* Content */}
         <div className="container mx-auto text-center relative z-10">
@@ -182,7 +182,7 @@ const Index = () => {
       {/* CTA Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto">
-          <div className="gradient-primary rounded-2xl p-12 text-center text-white shadow-xl">
+          <div className="gradient-primary rounded-2xl p-12 text-center text-white shadow-elegant">
             <h3 className="text-3xl md:text-4xl font-bold mb-4">
               Você é um Profissional ou Empresa?
             </h3>
@@ -192,7 +192,7 @@ const Index = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
                 onClick={() => navigate("/business/setup")}
-                className="bg-white text-primary px-8 py-3 rounded-lg font-semibold hover:scale-105 transition-smooth shadow-lg"
+                className="bg-white text-primary px-8 py-3 rounded-lg font-semibold hover:scale-105 transition-smooth shadow-lg hover:shadow-xl"
               >
                 Cadastrar Empresa
               </button>
