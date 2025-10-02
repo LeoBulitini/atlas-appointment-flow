@@ -537,10 +537,16 @@ export default function BusinessSettings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="salon">Salão de Beleza</SelectItem>
-                        <SelectItem value="barbershop">Barbearia</SelectItem>
-                        <SelectItem value="spa">Spa & Bem-estar</SelectItem>
-                        <SelectItem value="nails">Manicure & Pedicure</SelectItem>
+                        <SelectItem value="Salão de Beleza">Salão de Beleza</SelectItem>
+                        <SelectItem value="Barbearia">Barbearia</SelectItem>
+                        <SelectItem value="Spa & Massagem">Spa & Massagem</SelectItem>
+                        <SelectItem value="Estética & Unhas">Estética & Unhas</SelectItem>
+                        <SelectItem value="Maquiagem">Maquiagem</SelectItem>
+                        <SelectItem value="Tatuagem">Tatuagem</SelectItem>
+                        <SelectItem value="Nutricionista">Nutricionista</SelectItem>
+                        <SelectItem value="Psicologia">Psicologia</SelectItem>
+                        <SelectItem value="Estúdio de Tatuagem">Estúdio de Tatuagem</SelectItem>
+                        <SelectItem value="Outros">Outros</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
