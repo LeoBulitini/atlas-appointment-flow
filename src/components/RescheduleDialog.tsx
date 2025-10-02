@@ -215,20 +215,7 @@ export function RescheduleDialog({
       const startTime = parse(selectedTime, "HH:mm", new Date());
       const endTime = addMinutes(startTime, totalDuration);
 
-      // Update appointment
-      const { error: updateError } = await supabase
-        .from("appointments")
-        .update({
-          appointment_date: format(selectedDate, "yyyy-MM-dd"),
-          appointment_time: selectedTime,
-          end_time: format(endTime, "HH:mm:ss"),
-          service_id: selectedServices[0],
-        })
-        .eq("id", appointmentId);
-
-      if (updateError) throw updateError;
-
-      // Update services
+      // First, delete old services
       const { error: deleteError } = await supabase
         .from("appointment_services")
         .delete()
@@ -236,6 +223,7 @@ export function RescheduleDialog({
 
       if (deleteError) throw deleteError;
 
+      // Then insert new services
       const serviceInserts = selectedServices.map(serviceId => ({
         appointment_id: appointmentId,
         service_id: serviceId
@@ -246,6 +234,19 @@ export function RescheduleDialog({
         .insert(serviceInserts);
 
       if (insertError) throw insertError;
+
+      // Finally, update appointment with new date/time/duration
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({
+          appointment_date: format(selectedDate, "yyyy-MM-dd"),
+          appointment_time: selectedTime,
+          end_time: format(endTime, "HH:mm:ss"),
+          service_id: selectedServices[0], // Keep for compatibility
+        })
+        .eq("id", appointmentId);
+
+      if (updateError) throw updateError;
 
       toast({
         title: "Sucesso!",
@@ -258,7 +259,7 @@ export function RescheduleDialog({
       console.error("Error rescheduling:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível alterar o agendamento",
+        description: error.message || "Não foi possível alterar o agendamento",
         variant: "destructive",
       });
     } finally {
