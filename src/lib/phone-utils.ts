@@ -31,14 +31,24 @@ export const validatePhoneNumber = (phone: string): boolean => {
 };
 
 export const maskPhoneInput = (value: string): string => {
-  const cleaned = value.replace(/\D/g, '');
+  // Remove all non-numeric characters
+  let cleaned = value.replace(/\D/g, '');
+  
+  // Remove country code if present (55) to avoid duplication
+  if (cleaned.startsWith('55') && cleaned.length > 2) {
+    cleaned = cleaned.slice(2);
+  }
+  
+  // Limit to 11 digits (DDD + number)
+  cleaned = cleaned.slice(0, 11);
   
   if (cleaned.length === 0) return '';
   if (cleaned.length <= 2) return `+55 (${cleaned}`;
-  if (cleaned.length <= 7) return `+55 (${cleaned.slice(0, 2)}) ${cleaned.slice(2)}`;
-  if (cleaned.length <= 11) {
-    return `+55 (${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+  if (cleaned.length <= 6) return `+55 (${cleaned.slice(0, 2)}) ${cleaned.slice(2)}`;
+  if (cleaned.length <= 10) {
+    return `+55 (${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
   }
   
+  // 11 digits: mobile format
   return `+55 (${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7, 11)}`;
 };
