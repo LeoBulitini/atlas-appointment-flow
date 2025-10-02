@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2, Save } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Service {
   id: string;
@@ -69,12 +70,14 @@ const DAY_NAMES: { [key: string]: string } = {
 export default function BusinessSettings() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [openingHours, setOpeningHours] = useState<OpeningHours>({});
   const [newService, setNewService] = useState({ name: "", description: "", price: "", duration_minutes: "" });
+  const [activeTab, setActiveTab] = useState("services");
 
   useEffect(() => {
     fetchBusinessData();
@@ -280,16 +283,37 @@ export default function BusinessSettings() {
           Voltar ao Dashboard
         </Button>
 
-        <h1 className="text-3xl font-bold mb-6">Configurações</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-6">Configurações</h1>
 
-        <Tabs defaultValue="services" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="services">Serviços</TabsTrigger>
-            <TabsTrigger value="hours">Horários</TabsTrigger>
-            <TabsTrigger value="portfolio">Portfólio</TabsTrigger>
-            <TabsTrigger value="info">Informações</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
-          </TabsList>
+        {/* Mobile: Select Dropdown */}
+        {isMobile && (
+          <div className="mb-4">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="services">Serviços</SelectItem>
+                <SelectItem value="hours">Horários</SelectItem>
+                <SelectItem value="portfolio">Portfólio</SelectItem>
+                <SelectItem value="info">Informações</SelectItem>
+                <SelectItem value="settings">Configurações</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          {/* Desktop: Tab List */}
+          {!isMobile && (
+            <TabsList className="grid w-full grid-cols-5 mb-4">
+              <TabsTrigger value="services">Serviços</TabsTrigger>
+              <TabsTrigger value="hours">Horários</TabsTrigger>
+              <TabsTrigger value="portfolio">Portfólio</TabsTrigger>
+              <TabsTrigger value="info">Informações</TabsTrigger>
+              <TabsTrigger value="settings">Configurações</TabsTrigger>
+            </TabsList>
+          )}
 
           <TabsContent value="services">
             <Card>
@@ -305,6 +329,7 @@ export default function BusinessSettings() {
                       value={newService.name}
                       onChange={(e) => setNewService({ ...newService, name: e.target.value })}
                       placeholder="Ex: Corte de Cabelo"
+                      className="w-full"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -313,9 +338,10 @@ export default function BusinessSettings() {
                       value={newService.description}
                       onChange={(e) => setNewService({ ...newService, description: e.target.value })}
                       placeholder="Descrição do serviço"
+                      className="w-full"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Preço (R$)</Label>
                       <Input
@@ -323,6 +349,7 @@ export default function BusinessSettings() {
                         value={newService.price}
                         onChange={(e) => setNewService({ ...newService, price: e.target.value })}
                         placeholder="50.00"
+                        className="w-full"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -332,10 +359,11 @@ export default function BusinessSettings() {
                         value={newService.duration_minutes}
                         onChange={(e) => setNewService({ ...newService, duration_minutes: e.target.value })}
                         placeholder="60"
+                        className="w-full"
                       />
                     </div>
                   </div>
-                  <Button onClick={handleAddService} disabled={loading}>
+                  <Button onClick={handleAddService} disabled={loading} className="w-full sm:w-auto min-h-11">
                     <Plus className="mr-2 h-4 w-4" />
                     Adicionar Serviço
                   </Button>
@@ -344,14 +372,15 @@ export default function BusinessSettings() {
                 <div className="space-y-4">
                   <h3 className="font-semibold">Serviços Cadastrados</h3>
                   {services.map((service) => (
-                    <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
+                    <div key={service.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border rounded-lg">
+                      <div className="flex-1">
                         <h4 className="font-medium">{service.name}</h4>
                         <p className="text-sm text-muted-foreground">{service.description}</p>
-                        <p className="text-sm">R$ {service.price} - {service.duration_minutes} min</p>
+                        <p className="text-sm mt-1">R$ {service.price} - {service.duration_minutes} min</p>
                       </div>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteService(service.id)}>
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="destructive" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => handleDeleteService(service.id)}>
+                        <Trash2 className="h-4 w-4 mr-2 sm:mr-0" />
+                        <span className="sm:hidden">Excluir</span>
                       </Button>
                     </div>
                   ))}
@@ -382,8 +411,8 @@ export default function BusinessSettings() {
                       />
                     </div>
                     {openingHours[day]?.isOpen && (
-                      <div className="space-y-4 pl-4">
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-4 pl-0 sm:pl-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <Label>Abertura</Label>
                             <Input
@@ -395,6 +424,7 @@ export default function BusinessSettings() {
                                   [day]: { ...prev[day], openTime: e.target.value }
                                 }))
                               }
+                              className="w-full"
                             />
                           </div>
                           <div>
@@ -408,24 +438,26 @@ export default function BusinessSettings() {
                                   [day]: { ...prev[day], closeTime: e.target.value }
                                 }))
                               }
+                              className="w-full"
                             />
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <Label>Pausas</Label>
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
                               onClick={() => handleAddBreak(day)}
+                              className="w-full sm:w-auto"
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Adicionar Pausa
                             </Button>
                           </div>
                           {openingHours[day]?.breaks?.map((breakTime, index) => (
-                            <div key={index} className="flex gap-2 items-center">
+                            <div key={index} className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                               <Input
                                 type="time"
                                 value={breakTime.start}
@@ -437,8 +469,9 @@ export default function BusinessSettings() {
                                     [day]: { ...prev[day], breaks: newBreaks }
                                   }));
                                 }}
+                                className="flex-1"
                               />
-                              <span>até</span>
+                              <span className="text-center sm:text-left">até</span>
                               <Input
                                 type="time"
                                 value={breakTime.end}
@@ -450,14 +483,17 @@ export default function BusinessSettings() {
                                     [day]: { ...prev[day], breaks: newBreaks }
                                   }));
                                 }}
+                                className="flex-1"
                               />
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="destructive"
                                 onClick={() => handleRemoveBreak(day, index)}
+                                className="w-full sm:w-auto min-h-11"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4 mr-2 sm:mr-0" />
+                                <span className="sm:hidden">Remover</span>
                               </Button>
                             </div>
                           ))}
@@ -466,7 +502,7 @@ export default function BusinessSettings() {
                     )}
                   </div>
                 ))}
-                <Button onClick={handleSaveOpeningHours} disabled={loading}>
+                <Button onClick={handleSaveOpeningHours} disabled={loading} className="w-full sm:w-auto min-h-11">
                   <Save className="mr-2 h-4 w-4" />
                   Salvar Horários
                 </Button>

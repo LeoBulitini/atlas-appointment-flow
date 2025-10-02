@@ -19,6 +19,8 @@ import { ptBR } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
 import { Switch } from "@/components/ui/switch";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 
 const BusinessDashboard = () => {
   const navigate = useNavigate();
@@ -331,11 +333,14 @@ const BusinessDashboard = () => {
     return (
       <Card key={appointment.id} className="mb-4">
         <CardContent className="pt-6">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <p className="font-semibold text-lg">{appointment.profiles?.full_name}</p>
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 mb-4">
+            <div className="flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-base md:text-lg">{appointment.profiles?.full_name}</p>
+                {getStatusBadge(appointment.status)}
+              </div>
               <p className="text-sm text-muted-foreground">{servicesNames || "Sem serviços"}</p>
-              <div className="flex items-center gap-4 mt-2 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {format(parseISO(appointment.appointment_date), "dd/MM/yyyy")}
@@ -350,12 +355,11 @@ const BusinessDashboard = () => {
                 </span>
               </div>
             </div>
-            {getStatusBadge(appointment.status)}
           </div>
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex gap-2">
           {appointment.status === "pending" && (
-            <Button size="sm" onClick={() => handleUpdateAppointmentStatus(appointment.id, "confirmed")}>
+            <Button size="sm" className="min-h-10" onClick={() => handleUpdateAppointmentStatus(appointment.id, "confirmed")}>
               Confirmar
             </Button>
           )}
@@ -363,6 +367,7 @@ const BusinessDashboard = () => {
             <>
               <Button
                 size="sm"
+                className="min-h-10"
                 variant="outline"
                 onClick={() => {
                   setSelectedAppointment(appointment);
@@ -373,6 +378,7 @@ const BusinessDashboard = () => {
               </Button>
               <Button
                 size="sm"
+                className="min-h-10"
                 variant="destructive"
                 onClick={() => {
                   setSelectedAppointmentId(appointment.id);
@@ -384,6 +390,7 @@ const BusinessDashboard = () => {
               {appointment.profiles?.phone && (
                 <Button
                   size="sm"
+                  className="min-h-10 col-span-2 sm:col-span-1"
                   variant="outline"
                   onClick={() => handleWhatsApp(appointment.profiles.phone, appointment.profiles.full_name)}
                 >
@@ -425,12 +432,14 @@ const BusinessDashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+        <div className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Dashboard da Empresa</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">Dashboard da Empresa</h1>
             <p className="text-muted-foreground">{business.name}</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          
+          {/* Desktop: Botões visíveis */}
+          <div className="hidden md:flex gap-2 flex-wrap">
             <Button variant="outline" onClick={handleCopyShareLink}>
               <LinkIcon className="mr-2 h-4 w-4" />
               Copiar Link
@@ -448,6 +457,38 @@ const BusinessDashboard = () => {
               Clientes
             </Button>
             <Button onClick={() => navigate("/business/settings")}>Configurações</Button>
+          </div>
+
+          {/* Mobile: Menu dropdown */}
+          <div className="flex md:hidden gap-2 w-full">
+            <Button variant="outline" onClick={handleCopyShareLink} className="flex-1">
+              <LinkIcon className="mr-2 h-4 w-4" />
+              Copiar Link
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/business/analytics")}>
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Relatórios
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/reviews")}>
+                  <Star className="mr-2 h-4 w-4" />
+                  Avaliações
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/clients")}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Clientes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/settings")}>
+                  Configurações
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -473,56 +514,46 @@ const BusinessDashboard = () => {
           </CardContent>
         </Card>
 
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Agendamentos Hoje
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-primary">{todayAppointments.length}</p>
+              <div className="text-2xl font-bold">{todayAppointments.length}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Pendentes
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-yellow-600">
-                {appointments.filter((a) => a.status === "pending").length}
-              </p>
+              <div className="text-2xl font-bold">
+                {appointments.filter((app) => app.status === "pending").length}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <X className="h-5 w-5" />
-                Cancelados
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Cancelados</CardTitle>
+              <X className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-gray-600">
-                {appointments.filter((a) => a.status === "cancelled").length}
-              </p>
+              <div className="text-2xl font-bold">{cancelledAppointments.length}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Receita Total
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-600">R$ {totalRevenue.toFixed(2)}</p>
+              <div className="text-2xl font-bold">R$ {totalRevenue.toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
@@ -539,13 +570,13 @@ const BusinessDashboard = () => {
         )}
 
         <Card className="mb-8">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Agendamentos</CardTitle>
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="upcoming">
-              <TabsList className="mb-4">
+              <TabsList className="mb-4 w-full grid grid-cols-3">
                 <TabsTrigger value="upcoming">Próximos</TabsTrigger>
                 <TabsTrigger value="history">Histórico</TabsTrigger>
                 <TabsTrigger value="cancelled">Cancelados</TabsTrigger>
