@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import SearchBar from "@/components/SearchBar";
 import BusinessCard from "@/components/BusinessCard";
+import { Loader2 } from "lucide-react";
 import heroBackgroundImg from "@/assets/hero-background.jpg";
 import salonBeautyImg from "@/assets/salon-beauty.jpg";
 import barbershopImg from "@/assets/barbershop.jpg";
@@ -27,6 +28,35 @@ const Index = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check if business user is logged in and redirect to dashboard
+  useEffect(() => {
+    const checkBusinessUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_type')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile?.user_type === 'business') {
+            navigate('/dashboard/business');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkBusinessUser();
+  }, [navigate]);
 
   useEffect(() => {
     fetchBusinesses();
@@ -106,6 +136,14 @@ const Index = () => {
     "Spa & Massagem": spaWellnessImg,
     "Estética & Unhas": nailSalonImg,
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

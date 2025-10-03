@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Star, DollarSign } from "lucide-react";
+import { Calendar, Clock, Star, DollarSign, RefreshCw, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewDialog } from "@/components/ReviewDialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
@@ -31,6 +31,7 @@ const ClientDashboard = () => {
   const { toast } = useToast();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -130,6 +131,23 @@ const ClientDashboard = () => {
     setRescheduleDialogOpen(true);
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchAppointments(), fetchUserData()]);
+      toast({ title: "Dados atualizados!", description: "Seus dados foram atualizados com sucesso." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar os dados." });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
       pending: { label: "Pendente", className: "bg-yellow-500" },
@@ -154,9 +172,26 @@ const ClientDashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Dashboard do Cliente</h1>
-          <p className="text-muted-foreground">Bem-vindo, {profile?.full_name}!</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Dashboard do Cliente</h1>
+            <p className="text-muted-foreground">Bem-vindo, {profile?.full_name}!</p>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={refreshing}
+              size="sm"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-8">

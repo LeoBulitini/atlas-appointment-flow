@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power } from "lucide-react";
+import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power, RefreshCw, Megaphone, Settings, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ const BusinessDashboard = () => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfDay(new Date()),
     to: endOfDay(new Date(new Date().setDate(new Date().getDate() + 30))),
@@ -252,6 +253,23 @@ const BusinessDashboard = () => {
     toast({ title: "Link copiado!", description: "O link de agendamento foi copiado para a área de transferência." });
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchBusinessData();
+      toast({ title: "Dados atualizados!", description: "Seus dados foram atualizados com sucesso." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar os dados." });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
   const handleToggleBusinessStatus = async (isActive: boolean) => {
     if (!business) return;
 
@@ -442,9 +460,21 @@ const BusinessDashboard = () => {
           
           {/* Desktop: Botões visíveis */}
           <div className="hidden md:flex gap-2 flex-wrap">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
             <Button variant="outline" onClick={handleCopyShareLink}>
               <LinkIcon className="mr-2 h-4 w-4" />
               Copiar Link
+            </Button>
+            <Button onClick={() => navigate("/business/marketing")}>
+              <Megaphone className="mr-2 h-4 w-4" />
+              Marketing
             </Button>
             <Button onClick={() => navigate("/business/analytics")}>
               <BarChart3 className="mr-2 h-4 w-4" />
@@ -458,11 +488,26 @@ const BusinessDashboard = () => {
               <Users className="mr-2 h-4 w-4" />
               Clientes
             </Button>
-            <Button onClick={() => navigate("/business/settings")}>Configurações</Button>
+            <Button onClick={() => navigate("/business/settings")}>
+              <Settings className="mr-2 h-4 w-4" />
+              Configurações
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
           </div>
 
           {/* Mobile: Menu dropdown */}
           <div className="flex md:hidden gap-2 w-full">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </Button>
             <Button variant="outline" onClick={handleCopyShareLink} className="flex-1">
               <LinkIcon className="mr-2 h-4 w-4" />
               Copiar Link
@@ -474,6 +519,10 @@ const BusinessDashboard = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/business/marketing")}>
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  Marketing
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/business/analytics")}>
                   <BarChart3 className="mr-2 h-4 w-4" />
                   Relatórios
@@ -487,7 +536,12 @@ const BusinessDashboard = () => {
                   Clientes
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/business/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
                   Configurações
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
