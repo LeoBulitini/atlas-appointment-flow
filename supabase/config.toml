@@ -6,8 +6,20 @@ verify_jwt = false
 [functions.send-appointment-email]
 verify_jwt = true
 
+[functions.send-reminder-emails]
+verify_jwt = false
+
+[functions.create-client-by-business]
+verify_jwt = true
+
+[functions.log-error]
+verify_jwt = false
+
 [edge-runtime]
 policy = "per_worker"
 
 [functions.complete-appointments.cron]
 schedule = "*/15 * * * *"
+
+[functions.send-reminder-emails.cron]
+schedule = "*/5 * * * *"

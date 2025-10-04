@@ -60,6 +60,7 @@ export type Database = {
           end_time: string | null
           id: string
           notes: string | null
+          reminder_sent: boolean
           service_id: string
           status: Database["public"]["Enums"]["appointment_status"] | null
           updated_at: string | null
@@ -73,6 +74,7 @@ export type Database = {
           end_time?: string | null
           id?: string
           notes?: string | null
+          reminder_sent?: boolean
           service_id: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
           updated_at?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           end_time?: string | null
           id?: string
           notes?: string | null
+          reminder_sent?: boolean
           service_id?: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
           updated_at?: string | null
@@ -197,6 +200,50 @@ export type Database = {
           },
         ]
       }
+      business_special_hours: {
+        Row: {
+          breaks: Json | null
+          business_id: string
+          close_time: string | null
+          created_at: string
+          date: string
+          id: string
+          is_closed: boolean
+          notes: string | null
+          open_time: string | null
+        }
+        Insert: {
+          breaks?: Json | null
+          business_id: string
+          close_time?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          is_closed?: boolean
+          notes?: string | null
+          open_time?: string | null
+        }
+        Update: {
+          breaks?: Json | null
+          business_id?: string
+          close_time?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          is_closed?: boolean
+          notes?: string | null
+          open_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_special_hours_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       businesses: {
         Row: {
           address: string
@@ -213,6 +260,7 @@ export type Database = {
           name: string
           opening_hours: Json | null
           owner_id: string
+          payment_methods: string[] | null
           phone: string
           postal_code: string | null
           price_range: string | null
@@ -234,6 +282,7 @@ export type Database = {
           name: string
           opening_hours?: Json | null
           owner_id: string
+          payment_methods?: string[] | null
           phone: string
           postal_code?: string | null
           price_range?: string | null
@@ -255,6 +304,7 @@ export type Database = {
           name?: string
           opening_hours?: Json | null
           owner_id?: string
+          payment_methods?: string[] | null
           phone?: string
           postal_code?: string | null
           price_range?: string | null
@@ -270,6 +320,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      error_logs: {
+        Row: {
+          created_at: string
+          error_context: Json | null
+          error_message: string
+          error_stack: string | null
+          id: string
+          page_url: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_context?: Json | null
+          error_message: string
+          error_stack?: string | null
+          id?: string
+          page_url: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_context?: Json | null
+          error_message?: string
+          error_stack?: string | null
+          id?: string
+          page_url?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -360,7 +443,9 @@ export type Database = {
           description: string | null
           duration_minutes: number
           id: string
+          image_url: string | null
           is_active: boolean | null
+          is_public: boolean
           name: string
           price: number
           updated_at: string | null
@@ -371,7 +456,9 @@ export type Database = {
           description?: string | null
           duration_minutes: number
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
+          is_public?: boolean
           name: string
           price: number
           updated_at?: string | null
@@ -382,7 +469,9 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
+          is_public?: boolean
           name?: string
           price?: number
           updated_at?: string | null
