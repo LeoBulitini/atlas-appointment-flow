@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, DollarSign, Users, TrendingUp, Clock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { format } from "date-fns";
 
 interface AnalyticsData {
   totalClients: number;
@@ -27,10 +29,14 @@ export default function BusinessAnalytics() {
     hourlyDistribution: [],
   });
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({ 
+    from: new Date(new Date().setDate(new Date().getDate() - 30)),
+    to: new Date()
+  });
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [dateRange]);
 
   const fetchAnalytics = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -52,17 +58,27 @@ export default function BusinessAnalytics() {
 
     setBusinessId(business.id);
 
-    // Fetch completed appointments
-    const { data: appointments } = await supabase
+    // Fetch completed appointments with date filtering
+    let query = supabase
       .from("appointments")
       .select(`
         id,
         client_id,
         appointment_time,
+        appointment_date,
         profiles!client_id (full_name)
       `)
       .eq("business_id", business.id)
       .eq("status", "completed");
+
+    if (dateRange.from) {
+      query = query.gte("appointment_date", format(dateRange.from, "yyyy-MM-dd"));
+    }
+    if (dateRange.to) {
+      query = query.lte("appointment_date", format(dateRange.to, "yyyy-MM-dd"));
+    }
+
+    const { data: appointments } = await query;
 
     // Fetch all appointment services for completed appointments
     const { data: appointmentServices } = await supabase
@@ -153,7 +169,14 @@ export default function BusinessAnalytics() {
           Voltar ao Dashboard
         </Button>
 
-        <h1 className="text-3xl font-bold mb-8">Relatório de Faturamento</h1>
+        <h1 className="text-3xl font-bold mb-6">Relatório de Faturamento</h1>
+
+        <div className="mb-6">
+          <DateRangePicker
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card>

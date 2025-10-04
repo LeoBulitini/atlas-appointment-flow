@@ -20,6 +20,8 @@ interface Service {
   price: number;
   duration_minutes: number;
   is_active: boolean;
+  is_public: boolean;
+  image_url: string | null;
 }
 
 interface Business {
@@ -37,6 +39,7 @@ interface Business {
   opening_hours: any;
   auto_confirm_appointments?: boolean;
   logo_url?: string;
+  payment_methods?: string[];
 }
 
 interface PortfolioItem {
@@ -76,8 +79,9 @@ export default function BusinessSettings() {
   const [services, setServices] = useState<Service[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [openingHours, setOpeningHours] = useState<OpeningHours>({});
-  const [newService, setNewService] = useState({ name: "", description: "", price: "", duration_minutes: "" });
+  const [newService, setNewService] = useState({ name: "", description: "", price: "", duration_minutes: "", image_url: "", is_public: true });
   const [activeTab, setActiveTab] = useState("services");
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
 
   useEffect(() => {
     fetchBusinessData();
@@ -97,6 +101,7 @@ export default function BusinessSettings() {
       setBusiness(businessData);
       const hours = businessData.opening_hours as OpeningHours | null;
       setOpeningHours(hours || getDefaultOpeningHours());
+      setPaymentMethods(businessData.payment_methods || []);
     }
 
     const { data: servicesData } = await supabase
@@ -142,17 +147,43 @@ export default function BusinessSettings() {
       description: newService.description,
       price: parseFloat(newService.price),
       duration_minutes: parseInt(newService.duration_minutes),
-      is_active: true
+      is_active: true,
+      is_public: newService.is_public,
+      image_url: newService.image_url || null
     });
 
     if (error) {
       toast({ title: "Erro ao adicionar serviço", variant: "destructive" });
     } else {
       toast({ title: "Serviço adicionado com sucesso!" });
-      setNewService({ name: "", description: "", price: "", duration_minutes: "" });
+      setNewService({ name: "", description: "", price: "", duration_minutes: "", image_url: "", is_public: true });
       fetchBusinessData();
     }
     setLoading(false);
+  };
+
+  const handleServiceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewService({ ...newService, image_url: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const toggleServiceVisibility = async (serviceId: string, currentPublicStatus: boolean) => {
+    const { error } = await supabase
+      .from("services")
+      .update({ is_public: !currentPublicStatus })
+      .eq("id", serviceId);
+    
+    if (error) {
+      toast({ title: "Erro ao atualizar visibilidade", variant: "destructive" });
+    } else {
+      toast({ title: "Visibilidade atualizada!" });
+      fetchBusinessData();
+    }
   };
 
   const handleDeleteService = async (id: string) => {
@@ -363,6 +394,25 @@ export default function BusinessSettings() {
                       />
                     </div>
                   </div>
+                  <div className="grid gap-2">
+                    <Label>Imagem do Serviço (opcional)</Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleServiceImageUpload}
+                      className="w-full"
+                    />
+                    {newService.image_url && (
+                      <img src={newService.image_url} alt="Preview" className="w-32 h-32 object-cover rounded-lg mt-2" />
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={newService.is_public}
+                      onCheckedChange={(checked) => setNewService({ ...newService, is_public: checked })}
+                    />
+                    <Label>Serviço Público (visível para todos)</Label>
+                  </div>
                   <Button onClick={handleAddService} disabled={loading} className="w-full sm:w-auto min-h-11">
                     <Plus className="mr-2 h-4 w-4" />
                     Adicionar Serviço
@@ -372,16 +422,27 @@ export default function BusinessSettings() {
                 <div className="space-y-4">
                   <h3 className="font-semibold">Serviços Cadastrados</h3>
                   {services.map((service) => (
-                    <div key={service.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{service.name}</h4>
-                        <p className="text-sm text-muted-foreground">{service.description}</p>
-                        <p className="text-sm mt-1">R$ {service.price} - {service.duration_minutes} min</p>
+                    <div key={service.id} className="flex flex-col gap-3 p-4 border rounded-lg">
+                      <div className="flex items-start gap-3">
+                        {service.image_url && (
+                          <img src={service.image_url} alt={service.name} className="w-20 h-20 object-cover rounded-lg" />
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-medium">{service.name}</h4>
+                          <p className="text-sm text-muted-foreground">{service.description}</p>
+                          <p className="text-sm mt-1">R$ {service.price} - {service.duration_minutes} min</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Switch
+                              checked={service.is_public}
+                              onCheckedChange={() => toggleServiceVisibility(service.id, service.is_public)}
+                            />
+                            <Label className="text-xs">{service.is_public ? "Público" : "Privado"}</Label>
+                          </div>
+                        </div>
+                        <Button variant="destructive" size="sm" className="min-h-11" onClick={() => handleDeleteService(service.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button variant="destructive" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => handleDeleteService(service.id)}>
-                        <Trash2 className="h-4 w-4 mr-2 sm:mr-0" />
-                        <span className="sm:hidden">Excluir</span>
-                      </Button>
                     </div>
                   ))}
                 </div>
@@ -713,6 +774,50 @@ export default function BusinessSettings() {
                         reader.readAsDataURL(file);
                       }}
                     />
+                  </div>
+
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <Label>Métodos de Pagamento</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Selecione os métodos de pagamento aceitos
+                    </p>
+                    {["Dinheiro", "Pix", "Cartão de Crédito", "Cartão de Débito"].map((method) => (
+                      <div key={method} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={paymentMethods.includes(method)}
+                          onChange={(e) => {
+                            const newMethods = e.target.checked
+                              ? [...paymentMethods, method]
+                              : paymentMethods.filter(m => m !== method);
+                            setPaymentMethods(newMethods);
+                          }}
+                          className="rounded"
+                        />
+                        <Label>{method}</Label>
+                      </div>
+                    ))}
+                    <Button
+                      onClick={async () => {
+                        setLoading(true);
+                        const { error } = await supabase
+                          .from("businesses")
+                          .update({ payment_methods: paymentMethods })
+                          .eq("id", business.id);
+                        
+                        if (error) {
+                          toast({ title: "Erro ao atualizar métodos", variant: "destructive" });
+                        } else {
+                          toast({ title: "Métodos de pagamento atualizados!" });
+                        }
+                        setLoading(false);
+                      }}
+                      disabled={loading}
+                      className="mt-2"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Salvar Métodos
+                    </Button>
                   </div>
                 </div>
               </CardContent>

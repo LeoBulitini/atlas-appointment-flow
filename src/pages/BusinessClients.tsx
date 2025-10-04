@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Phone, Calendar as CalendarIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Phone, Calendar as CalendarIcon, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +67,9 @@ export default function BusinessClients() {
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
+  const [newClientData, setNewClientData] = useState({ full_name: "", phone: "", email: "", password: "" });
+  const [creatingClient, setCreatingClient] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -162,6 +166,44 @@ export default function BusinessClients() {
       if (servicesData) {
         setServices(servicesData);
       }
+    }
+  };
+
+  const handleCreateClient = async () => {
+    if (!newClientData.full_name || !newClientData.phone || !newClientData.email || !newClientData.password) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos para criar um cliente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCreatingClient(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-client-by-business', {
+        body: newClientData
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Cliente criado!",
+        description: `Cliente ${newClientData.full_name} foi criado com sucesso.`,
+      });
+
+      setCreateClientDialogOpen(false);
+      setNewClientData({ full_name: "", phone: "", email: "", password: "" });
+      fetchClients();
+    } catch (error: any) {
+      console.error("Erro ao criar cliente:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível criar o cliente.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingClient(false);
     }
   };
 
@@ -311,7 +353,79 @@ export default function BusinessClients() {
           Voltar ao Dashboard
         </Button>
 
-        <h1 className="text-3xl font-bold mb-6">Meus Clientes</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Meus Clientes</h1>
+          <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Criar Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Criar Novo Cliente</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="client-name">Nome Completo *</Label>
+                  <Input
+                    id="client-name"
+                    value={newClientData.full_name}
+                    onChange={(e) => setNewClientData({ ...newClientData, full_name: e.target.value })}
+                    placeholder="Nome do cliente"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="client-phone">Telefone *</Label>
+                  <Input
+                    id="client-phone"
+                    value={newClientData.phone}
+                    onChange={(e) => setNewClientData({ ...newClientData, phone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="client-email">E-mail *</Label>
+                  <Input
+                    id="client-email"
+                    type="email"
+                    value={newClientData.email}
+                    onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="client-password">Senha *</Label>
+                  <Input
+                    id="client-password"
+                    type="password"
+                    value={newClientData.password}
+                    onChange={(e) => setNewClientData({ ...newClientData, password: e.target.value })}
+                    placeholder="Senha de acesso"
+                  />
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setCreateClientDialogOpen(false)}
+                    disabled={creatingClient}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={handleCreateClient}
+                    disabled={creatingClient}
+                  >
+                    {creatingClient ? "Criando..." : "Criar Cliente"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>

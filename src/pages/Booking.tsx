@@ -143,6 +143,7 @@ interface Service {
   description: string;
   price: number;
   duration_minutes: number;
+  image_url: string | null;
 }
 
 interface Business {
@@ -158,6 +159,7 @@ interface Business {
   price_range: string;
   opening_hours: any;
   auto_confirm_appointments?: boolean;
+  payment_methods?: string[];
 }
 
 interface PortfolioItem {
@@ -240,7 +242,8 @@ const Booking = () => {
         .from("services")
         .select("*")
         .eq("business_id", businessId)
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .eq("is_public", true);
 
       if (servicesError) throw servicesError;
       setServices(servicesData || []);
@@ -631,6 +634,19 @@ const Booking = () => {
                     <span>Faixa de preço: {business.price_range}</span>
                   </div>
 
+                  {business.payment_methods && business.payment_methods.length > 0 && (
+                    <div className="mt-2 pt-2 border-t">
+                      <h4 className="font-semibold mb-2 text-sm">Formas de Pagamento:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {business.payment_methods.map((method) => (
+                          <Badge key={method} variant="secondary" className="text-xs">
+                            {method}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {business.opening_hours && (
                     <div className="mt-4 pt-4 border-t">
                       <h4 className="font-semibold mb-2 flex items-center gap-2">
@@ -764,6 +780,9 @@ const Booking = () => {
                                     checked={selectedServices.includes(service.id)}
                                     onCheckedChange={() => handleServiceToggle(service.id)}
                                   />
+                                  {service.image_url && (
+                                    <img src={service.image_url} alt={service.name} className="w-20 h-20 object-cover rounded-lg" />
+                                  )}
                                   <div className="flex-1">
                                   <div className="flex justify-between items-start">
                                     <div>
