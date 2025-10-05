@@ -10,17 +10,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Phone, Calendar as CalendarIcon, UserPlus } from "lucide-react";
 import { format } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface Client {
   id: string;
   client_id: string;
-  first_appointment_date: string;
-  last_appointment_date: string;
+  first_appointment_date: string | null;
+  last_appointment_date: string | null;
   total_appointments: number;
   profiles: {
     full_name: string;
@@ -51,6 +54,8 @@ interface Business {
   opening_hours: any;
 }
 
+const BRAZIL_TZ = 'America/Sao_Paulo';
+
 export default function BusinessClients() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -62,7 +67,7 @@ export default function BusinessClients() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [bookingClient, setBookingClient] = useState<Client | null>(null);
-  const [selectedService, setSelectedService] = useState<string>("");
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -101,7 +106,11 @@ export default function BusinessClients() {
       .order("last_appointment_date", { ascending: false });
 
     if (clientsData) {
-      setClients(clientsData);
+      // Filter clients to only show those with at least one appointment
+      const clientsWithAppointments = clientsData.filter(
+        client => client.total_appointments && client.total_appointments > 0
+      );
+      setClients(clientsWithAppointments);
     }
     setLoading(false);
   };
@@ -194,7 +203,7 @@ export default function BusinessClients() {
 
       setCreateClientDialogOpen(false);
       setNewClientData({ full_name: "", phone: "", email: "", password: "" });
-      fetchClients();
+      await fetchClients();
     } catch (error: any) {
       console.error("Erro ao criar cliente:", error);
       toast({
@@ -214,7 +223,7 @@ export default function BusinessClients() {
 
   const openBookingDialog = (client: Client) => {
     setBookingClient(client);
-    setSelectedService("");
+    setSelectedServices([]);
     setSelectedDate(undefined);
     setSelectedTime("");
     setNotes("");
@@ -224,7 +233,8 @@ export default function BusinessClients() {
   const getAvailableTimes = () => {
     if (!selectedDate || !business?.opening_hours) return [];
     
-    const dayOfWeek = selectedDate.getDay();
+    const zonedDate = toZonedTime(selectedDate, BRAZIL_TZ);
+    const dayOfWeek = zonedDate.getDay();
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayNames[dayOfWeek];
     const hours = business.opening_hours[dayName];
@@ -249,7 +259,7 @@ export default function BusinessClients() {
   };
 
   const handleBookAppointment = async () => {
-    if (!bookingClient || !selectedService || !selectedDate || !selectedTime || !business) {
+    if (!bookingClient || selectedServices.length === 0 || !selectedDate || !selectedTime || !business) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -261,18 +271,31 @@ export default function BusinessClients() {
     setBookingLoading(true);
 
     try {
-      const service = services.find(s => s.id === selectedService);
-      if (!service) throw new Error("Serviço não encontrado");
+      // Calculate total duration from all selected services
+      const selectedServiceObjects = services.filter(s => selectedServices.includes(s.id));
+      if (selectedServiceObjects.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Serviços não encontrados",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const totalDuration = selectedServiceObjects.reduce((sum, s) => sum + s.duration_minutes, 0);
 
+      const zonedDate = toZonedTime(selectedDate, BRAZIL_TZ);
       const [hours, minutes] = selectedTime.split(':').map(Number);
-      const endTime = new Date(0, 0, 0, hours, minutes + service.duration_minutes);
+      const endTime = new Date(zonedDate);
+      endTime.setHours(hours);
+      endTime.setMinutes(minutes + totalDuration);
       const endTimeString = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
 
       const { data, error } = await supabase.rpc('create_appointment_if_available', {
         p_business_id: business.id,
-        p_service_id: selectedService,
+        p_service_id: selectedServices[0],
         p_client_id: bookingClient.client_id,
-        p_appointment_date: format(selectedDate, 'yyyy-MM-dd'),
+        p_appointment_date: format(zonedDate, 'yyyy-MM-dd'),
         p_appointment_time: selectedTime,
         p_end_time: endTimeString,
         p_notes: notes || null,
@@ -292,20 +315,22 @@ export default function BusinessClients() {
         return;
       }
 
-      // Criar registro em appointment_services para vincular o serviço
+      // Link all selected services to appointment
       if (result.appointment_id) {
-        const { error: serviceError } = await supabase
-          .from('appointment_services')
-          .insert({
-            appointment_id: result.appointment_id,
-            service_id: selectedService
-          });
+        for (const serviceId of selectedServices) {
+          const { error: serviceError } = await supabase
+            .from('appointment_services')
+            .insert({
+              appointment_id: result.appointment_id,
+              service_id: serviceId
+            });
 
-        if (serviceError) {
-          console.error("Erro ao vincular serviço:", serviceError);
+          if (serviceError) {
+            console.error("Erro ao vincular serviço:", serviceError);
+          }
         }
 
-        // Enviar email de confirmação
+        // Send confirmation email
         try {
           await supabase.functions.invoke('send-appointment-email', {
             body: {
@@ -315,7 +340,6 @@ export default function BusinessClients() {
           });
         } catch (emailError) {
           console.error("Erro ao enviar email:", emailError);
-          // Não bloqueia o agendamento se o email falhar
         }
       }
 
@@ -325,9 +349,9 @@ export default function BusinessClients() {
       });
 
       setBookingDialogOpen(false);
-      fetchClients();
+      await fetchClients();
       if (selectedClient) {
-        fetchClientAppointments(selectedClient);
+        await fetchClientAppointments(selectedClient);
       }
     } catch (error) {
       console.error("Erro ao criar agendamento:", error);
@@ -452,10 +476,12 @@ export default function BusinessClients() {
                         <p className="text-sm text-muted-foreground">
                           {client.total_appointments} agendamento{client.total_appointments !== 1 ? 's' : ''}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          Último agendamento:{' '}
-                          {format(new Date(client.last_appointment_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                        </p>
+                        {client.last_appointment_date && (
+                          <p className="text-sm text-muted-foreground">
+                            Último agendamento:{' '}
+                            {format(new Date(client.last_appointment_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col gap-2">
                         <Button
@@ -506,35 +532,19 @@ export default function BusinessClients() {
               ) : (
                 appointments.map((appointment) => (
                   <div key={appointment.id} className="p-4 border rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold">{appointment.services.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(appointment.appointment_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                          {' às '}
-                          {appointment.appointment_time}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          appointment.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : appointment.status === 'confirmed'
-                            ? 'bg-blue-100 text-blue-800'
-                            : appointment.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {appointment.status === 'completed'
-                          ? 'Concluído'
-                          : appointment.status === 'confirmed'
-                          ? 'Confirmado'
-                          : appointment.status === 'cancelled'
-                          ? 'Cancelado'
-                          : 'Pendente'}
-                      </span>
-                    </div>
+                    <p className="font-semibold">{appointment.services.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(appointment.appointment_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} às {appointment.appointment_time}
+                    </p>
+                    <Badge className="mt-2" variant={
+                      appointment.status === 'confirmed' ? 'default' :
+                      appointment.status === 'completed' ? 'secondary' :
+                      appointment.status === 'cancelled' ? 'destructive' : 'outline'
+                    }>
+                      {appointment.status === 'confirmed' ? 'Confirmado' :
+                       appointment.status === 'pending' ? 'Pendente' :
+                       appointment.status === 'completed' ? 'Completado' : 'Cancelado'}
+                    </Badge>
                   </div>
                 ))
               )}
@@ -543,28 +553,46 @@ export default function BusinessClients() {
         </div>
 
         <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Agendar para {bookingClient?.profiles.full_name}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="service">Serviço *</Label>
-                <Select value={selectedService} onValueChange={setSelectedService}>
-                  <SelectTrigger id="service">
-                    <SelectValue placeholder="Selecione um serviço" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {services.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
-                        {service.name} - R$ {service.price.toFixed(2)} ({service.duration_minutes}min)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div>
+                <Label>Serviços * (selecione um ou mais)</Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3 mt-2">
+                  {services.map((service) => (
+                    <div key={service.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={service.id}
+                        checked={selectedServices.includes(service.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedServices([...selectedServices, service.id]);
+                          } else {
+                            setSelectedServices(selectedServices.filter(id => id !== service.id));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={service.id}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                      >
+                        {service.name} - R$ {service.price.toFixed(2)} ({service.duration_minutes} min)
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                {selectedServices.length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Duração total: {services
+                      .filter(s => selectedServices.includes(s.id))
+                      .reduce((sum, s) => sum + s.duration_minutes, 0)} minutos
+                  </p>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div>
                 <Label>Data *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -586,35 +614,38 @@ export default function BusinessClients() {
                       onSelect={setSelectedDate}
                       disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                       initialFocus
-                      className="pointer-events-auto"
+                      locale={ptBR}
                     />
                   </PopoverContent>
                 </Popover>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="time">Horário *</Label>
-                <Select value={selectedTime} onValueChange={setSelectedTime} disabled={!selectedDate}>
-                  <SelectTrigger id="time">
-                    <SelectValue placeholder="Selecione um horário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableTimes().map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {selectedDate && (
+                <div>
+                  <Label>Horário *</Label>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um horário" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableTimes().map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
                   id="notes"
-                  placeholder="Observações sobre o agendamento..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Observações adicionais..."
+                  className="resize-none"
                   rows={3}
                 />
               </div>
@@ -633,7 +664,7 @@ export default function BusinessClients() {
                   onClick={handleBookAppointment}
                   disabled={bookingLoading}
                 >
-                  {bookingLoading ? "Agendando..." : "Confirmar Agendamento"}
+                  {bookingLoading ? "Criando..." : "Criar Agendamento"}
                 </Button>
               </div>
             </div>
