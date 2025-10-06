@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2, Save } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { SpecialHoursManager } from "@/components/SpecialHoursManager";
 
 interface Service {
   id: string;

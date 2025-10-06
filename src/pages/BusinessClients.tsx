@@ -70,6 +70,7 @@ export default function BusinessClients() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>("");
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
@@ -80,6 +81,12 @@ export default function BusinessClients() {
     fetchClients();
     fetchBusinessAndServices();
   }, []);
+
+  useEffect(() => {
+    if (selectedDate && business) {
+      loadAvailableTimes();
+    }
+  }, [selectedDate, business]);
 
   const fetchClients = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -230,14 +237,46 @@ export default function BusinessClients() {
     setBookingDialogOpen(true);
   };
 
-  const getAvailableTimes = () => {
+  const loadAvailableTimes = async () => {
+    const times = await getAvailableTimes();
+    setAvailableTimes(times);
+  };
+
+  const getAvailableTimes = async () => {
     if (!selectedDate || !business?.opening_hours) return [];
     
     const zonedDate = toZonedTime(selectedDate, BRAZIL_TZ);
-    const dayOfWeek = zonedDate.getDay();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayName = dayNames[dayOfWeek];
-    const hours = business.opening_hours[dayName];
+    const dateStr = format(zonedDate, 'yyyy-MM-dd');
+
+    // Check for special hours first
+    const { data: specialHours } = await supabase
+      .from("business_special_hours")
+      .select("*")
+      .eq("business_id", business.id)
+      .eq("date", dateStr)
+      .single();
+
+    // If closed on this specific day
+    if (specialHours?.is_closed) return [];
+
+    // Determine which schedule to use
+    let hours;
+    
+    if (specialHours && !specialHours.is_closed) {
+      // Use special hours
+      hours = {
+        isOpen: true,
+        openTime: specialHours.open_time,
+        closeTime: specialHours.close_time,
+        breaks: specialHours.breaks || []
+      };
+    } else {
+      // Use regular weekly schedule
+      const dayOfWeek = zonedDate.getDay();
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayName = dayNames[dayOfWeek];
+      hours = business.opening_hours[dayName];
+    }
     
     if (!hours || !hours.isOpen) return [];
     
@@ -628,7 +667,7 @@ export default function BusinessClients() {
                       <SelectValue placeholder="Selecione um horário" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getAvailableTimes().map((time) => (
+                      {availableTimes.map((time) => (
                         <SelectItem key={time} value={time}>
                           {time}
                         </SelectItem>

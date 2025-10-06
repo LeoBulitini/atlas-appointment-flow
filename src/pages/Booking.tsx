@@ -270,19 +270,48 @@ const Booking = () => {
   const generateAvailableSlots = async () => {
     if (!selectedDate || !business?.opening_hours) return;
 
-    const dayName = format(selectedDate, 'EEEE', { locale: ptBR }).toLowerCase();
-    const englishDays: { [key: string]: string } = {
-      'domingo': 'sunday',
-      'segunda-feira': 'monday',
-      'terça-feira': 'tuesday',
-      'quarta-feira': 'wednesday',
-      'quinta-feira': 'thursday',
-      'sexta-feira': 'friday',
-      'sábado': 'saturday'
-    };
+    // Check for special hours first
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    const { data: specialHours } = await supabase
+      .from("business_special_hours")
+      .select("*")
+      .eq("business_id", businessId)
+      .eq("date", dateStr)
+      .single();
+
+    // If the business is closed on this specific day
+    if (specialHours?.is_closed) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    // Determine the schedule to use (special hours or regular hours)
+    let daySchedule;
     
-    const dayKey = englishDays[dayName];
-    const daySchedule = business.opening_hours[dayKey];
+    if (specialHours && !specialHours.is_closed) {
+      // Use special hours for this date
+      daySchedule = {
+        isOpen: true,
+        openTime: specialHours.open_time,
+        closeTime: specialHours.close_time,
+        breaks: specialHours.breaks || []
+      };
+    } else {
+      // Use regular weekly schedule
+      const dayName = format(selectedDate, 'EEEE', { locale: ptBR }).toLowerCase();
+      const englishDays: { [key: string]: string } = {
+        'domingo': 'sunday',
+        'segunda-feira': 'monday',
+        'terça-feira': 'tuesday',
+        'quarta-feira': 'wednesday',
+        'quinta-feira': 'thursday',
+        'sexta-feira': 'friday',
+        'sábado': 'saturday'
+      };
+      
+      const dayKey = englishDays[dayName];
+      daySchedule = business.opening_hours[dayKey];
+    }
 
     if (!daySchedule || !daySchedule.isOpen) {
       setAvailableSlots([]);
