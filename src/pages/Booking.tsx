@@ -185,6 +185,7 @@ const Booking = () => {
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [showAllPortfolio, setShowAllPortfolio] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [specialHours, setSpecialHours] = useState<any[]>([]);
 
   useEffect(() => {
     if (businessId) {
@@ -255,6 +256,14 @@ const Booking = () => {
         .order("display_order", { ascending: true });
 
       setPortfolio(portfolioData || []);
+
+      // Fetch special hours for calendar
+      const { data: specialHoursData } = await supabase
+        .from("business_special_hours")
+        .select("*")
+        .eq("business_id", businessId);
+
+      setSpecialHours(specialHoursData || []);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
@@ -859,6 +868,19 @@ const Booking = () => {
                         if (date < startOfDay(new Date())) return true;
                         if (!business?.opening_hours) return false;
                         
+                        // Check if there's a special hour for this specific date
+                        const dateStr = format(date, "yyyy-MM-dd");
+                        const specialHour = specialHours.find(sh => sh.date === dateStr);
+                        
+                        // If there's a special hour configured
+                        if (specialHour) {
+                          // If it's marked as closed, disable this day
+                          if (specialHour.is_closed) return true;
+                          // If it's not closed, enable this day (even if normally closed)
+                          return false;
+                        }
+                        
+                        // If no special hour, use regular weekly schedule
                         const dayName = format(date, 'EEEE', { locale: ptBR }).toLowerCase();
                         const englishDays: { [key: string]: string } = {
                           'domingo': 'sunday',
