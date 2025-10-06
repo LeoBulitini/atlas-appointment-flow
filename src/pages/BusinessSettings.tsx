@@ -568,6 +568,14 @@ export default function BusinessSettings() {
                   <Save className="mr-2 h-4 w-4" />
                   Salvar Horários
                 </Button>
+
+                <div className="mt-8 pt-6 border-t">
+                  <h3 className="text-lg font-semibold mb-4">Dias Específicos</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Configure horários especiais para datas específicas (feriados, eventos, etc.)
+                  </p>
+                  {business?.id && <SpecialHoursManager businessId={business.id} />}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
