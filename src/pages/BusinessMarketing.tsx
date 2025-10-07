@@ -23,6 +23,8 @@ import {
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
+import { MessageTemplateDialog } from "@/components/MessageTemplateDialog";
+import { hasRequiredFields } from "@/lib/marketing-utils";
 
 interface MessageTemplate {
   id: string;
@@ -38,6 +40,8 @@ const BusinessMarketing = () => {
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,14 +82,14 @@ const BusinessMarketing = () => {
       icon: RefreshCw,
       category: "Engajamento",
       color: "bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20",
-      message: `Olá [NOME]! 😊
+      message: `Olá! 😊
 
 Saudades de você por aqui! Faz um tempinho que não nos vemos... 
 
 Que tal marcar um horário? Estou com a agenda aberta e adoraria te atender novamente! ✨
 
 Me chama aqui mesmo pra gente combinar! 💙`,
-      fields: ["[NOME]"],
+      fields: [],
     },
     {
       id: "vagas-hoje",
@@ -93,7 +97,7 @@ Me chama aqui mesmo pra gente combinar! 💙`,
       icon: Clock,
       category: "Urgência",
       color: "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20",
-      message: `Oi [NOME]! ⚡
+      message: `Oi! ⚡
 
 Olha só, ainda tenho [X] horários disponíveis HOJE:
 
@@ -102,7 +106,7 @@ Olha só, ainda tenho [X] horários disponíveis HOJE:
 🕒 [HORÁRIO 3]
 
 Aproveita! Me chama rápido pra garantir o seu! 😉`,
-      fields: ["[NOME]", "[X]", "[HORÁRIO 1]", "[HORÁRIO 2]", "[HORÁRIO 3]"],
+      fields: ["[X]", "[HORÁRIO 1]", "[HORÁRIO 2]", "[HORÁRIO 3]"],
     },
     {
       id: "horarios-semana",
@@ -110,18 +114,14 @@ Aproveita! Me chama rápido pra garantir o seu! 😉`,
       icon: Calendar,
       category: "Planejamento",
       color: "bg-green-500/10 border-green-500/20 hover:bg-green-500/20",
-      message: `Oi [NOME]! 📅
+      message: `Oi! 📅
 
 Essa semana ainda tem horários livres:
 
-📅 Segunda: [HORÁRIOS]
-📅 Terça: [HORÁRIOS]
-📅 Quarta: [HORÁRIOS]
-📅 Quinta: [HORÁRIOS]
-📅 Sexta: [HORÁRIOS]
+[HORÁRIOS]
 
 Qual dia é melhor pra você? Me chama! 💚`,
-      fields: ["[NOME]", "[HORÁRIOS]"],
+      fields: ["[HORÁRIOS]"],
     },
     {
       id: "lembrete-agendamento",
@@ -129,16 +129,16 @@ Qual dia é melhor pra você? Me chama! 💚`,
       icon: MessageCircle,
       category: "Lembrete",
       color: "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20",
-      message: `Oi [NOME]! ⏰
+      message: `Oi! ⏰
 
-Só passando pra lembrar:
+Só passando pra lembrar do seu agendamento:
 
-📅 Amanhã, [DATA]
+📅 [DATA]
 🕐 Às [HORA]
 ✨ [SERVIÇO]
 
 Qualquer coisa é só chamar! Te espero 💜`,
-      fields: ["[NOME]", "[DATA]", "[HORA]", "[SERVIÇO]"],
+      fields: ["[DATA]", "[HORA]", "[SERVIÇO]"],
     },
     {
       id: "oferta-promocao",
@@ -146,7 +146,7 @@ Qualquer coisa é só chamar! Te espero 💜`,
       icon: Gift,
       category: "Promoção",
       color: "bg-pink-500/10 border-pink-500/20 hover:bg-pink-500/20",
-      message: `Olá [NOME]! 🎁
+      message: `Olá! 🎁
 
 Tenho uma novidade pra você:
 
@@ -155,7 +155,7 @@ Tenho uma novidade pra você:
 ⏰ Válido até [DATA]
 
 Aproveita! Me chama pra agendar! 💖`,
-      fields: ["[NOME]", "[DESCRIÇÃO DA PROMOÇÃO/NOVIDADE]", "[DATA]"],
+      fields: ["[DESCRIÇÃO DA PROMOÇÃO/NOVIDADE]", "[DATA]"],
     },
     {
       id: "agradecimento",
@@ -163,14 +163,14 @@ Aproveita! Me chama pra agendar! 💖`,
       icon: Heart,
       category: "Relacionamento",
       color: "bg-red-500/10 border-red-500/20 hover:bg-red-500/20",
-      message: `Oi [NOME]! 💙
+      message: `Oi! 💙
 
 Muito obrigado(a) por ter vindo hoje! Espero que tenha gostado do resultado! ✨
 
 Se precisar de alguma coisa ou quiser agendar de novo, é só chamar! 
 
 Até a próxima! 😊`,
-      fields: ["[NOME]"],
+      fields: [],
     },
     {
       id: "pedido-indicacao",
@@ -178,14 +178,14 @@ Até a próxima! 😊`,
       icon: Users,
       category: "Relacionamento",
       color: "bg-cyan-500/10 border-cyan-500/20 hover:bg-cyan-500/20",
-      message: `Oi [NOME]! 💙
+      message: `Oi! 💙
 
 Você sempre foi um cliente especial por aqui!
 
 Se conhecer alguém que precise dos meus serviços, pode indicar? Vou cuidar super bem! 🌟
 
 Obrigado(a) pela confiança! 😊`,
-      fields: ["[NOME]"],
+      fields: [],
     },
     {
       id: "novo-servico",
@@ -193,15 +193,15 @@ Obrigado(a) pela confiança! 😊`,
       icon: Sparkles,
       category: "Novidade",
       color: "bg-yellow-500/10 border-yellow-500/20 hover:bg-yellow-500/20",
-      message: `Oi [NOME]! ✨
+      message: `Oi! ✨
 
 Comecei a fazer [NOVO SERVIÇO]! Acho que você vai gostar! 💫
 
-Valor: R$ [VALOR]
+Valor: [VALOR]
 Duração: [TEMPO]
 
 Me chama pra agendar e conhecer! 🎉`,
-      fields: ["[NOME]", "[NOVO SERVIÇO]", "[VALOR]", "[TEMPO]"],
+      fields: ["[NOVO SERVIÇO]", "[VALOR]", "[TEMPO]"],
     },
     {
       id: "link-agendamento",
@@ -218,7 +218,7 @@ Para facilitar, você pode agendar direto por esse link:
 Escolha o melhor dia e horário pra você! 
 
 Qualquer dúvida é só chamar! 😊`,
-      fields: ["[LINK_AGENDAMENTO]"],
+      fields: [],
     },
     {
       id: "aniversario",
@@ -226,14 +226,14 @@ Qualquer dúvida é só chamar! 😊`,
       icon: Cake,
       category: "Especial",
       color: "bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20",
-      message: `🎉 FELIZ ANIVERSÁRIO, [NOME]! 🎂
+      message: `🎉 FELIZ ANIVERSÁRIO! 🎂
 
 Desejo um dia incrível cheio de alegrias!
 
 Como presente, preparei uma surpresa especial pra você! 🎁
 
 Me chama que vou te contar! 💝`,
-      fields: ["[NOME]"],
+      fields: [],
     },
   ];
 
@@ -251,6 +251,22 @@ Me chama que vou te contar! 💝`,
   const openWhatsApp = (message: string) => {
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+  };
+
+  const handleTemplateAction = (template: MessageTemplate, action: 'copy' | 'whatsapp') => {
+    // Se o template não tem campos obrigatórios ou é o link de agendamento, executar diretamente
+    if (template.fields.length === 0 || template.id === 'link-agendamento') {
+      if (action === 'copy') {
+        copyToClipboard(template.message, template.id);
+      } else {
+        openWhatsApp(template.message);
+      }
+      return;
+    }
+
+    // Se tem campos, abrir o dialog
+    setSelectedTemplate(template);
+    setDialogOpen(true);
   };
 
   if (loading) {
@@ -323,9 +339,9 @@ Me chama que vou te contar! 💝`,
             <CollapsibleContent>
               <CardContent className="space-y-4 pt-0">
                 <div>
-                  <h4 className="font-semibold mb-2">📝 Como personalizar</h4>
+                  <h4 className="font-semibold mb-2">📝 Como usar</h4>
                   <p className="text-sm text-muted-foreground">
-                    Os campos entre colchetes [NOME], [DATA], [HORA] devem ser substituídos com as informações reais do cliente antes de enviar.
+                    Para mensagens que precisam de informações específicas (datas, horários, serviços), o sistema irá solicitar que você selecione ou preencha os dados necessários antes de copiar ou enviar.
                   </p>
                 </div>
                 <div>
@@ -385,7 +401,7 @@ Me chama que vou te contar! 💝`,
                     <Button
                       variant="outline"
                       className="flex-1"
-                      onClick={() => copyToClipboard(template.message, template.id)}
+                      onClick={() => handleTemplateAction(template, 'copy')}
                     >
                       {copiedId === template.id ? (
                         <>
@@ -401,7 +417,7 @@ Me chama que vou te contar! 💝`,
                     </Button>
                     <Button
                       className="flex-1"
-                      onClick={() => openWhatsApp(template.message)}
+                      onClick={() => handleTemplateAction(template, 'whatsapp')}
                     >
                       <MessageCircle className="mr-2 h-4 w-4" />
                       WhatsApp
@@ -412,6 +428,18 @@ Me chama que vou te contar! 💝`,
             );
           })}
         </div>
+
+        {/* Dialog para templates com campos */}
+        {selectedTemplate && business && (
+          <MessageTemplateDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            template={selectedTemplate}
+            businessId={business.id}
+            onCopy={(message) => copyToClipboard(message, selectedTemplate.id)}
+            onWhatsApp={openWhatsApp}
+          />
+        )}
       </div>
     </div>
   );
