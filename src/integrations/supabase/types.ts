@@ -354,6 +354,261 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_transactions: {
+        Row: {
+          amount: number
+          appointment_id: string | null
+          business_id: string
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          payment_method: string | null
+          transaction_date: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          appointment_id?: string | null
+          business_id: string
+          category: string
+          created_at?: string | null
+          description: string
+          id?: string
+          payment_method?: string | null
+          transaction_date: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          appointment_id?: string | null
+          business_id?: string
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          payment_method?: string | null
+          transaction_date?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_balances: {
+        Row: {
+          business_id: string
+          client_id: string
+          created_at: string | null
+          id: string
+          points: number | null
+          updated_at: string | null
+          visits: number | null
+        }
+        Insert: {
+          business_id: string
+          client_id: string
+          created_at?: string | null
+          id?: string
+          points?: number | null
+          updated_at?: string | null
+          visits?: number | null
+        }
+        Update: {
+          business_id?: string
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          points?: number | null
+          updated_at?: string | null
+          visits?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_balances_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_programs: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          points_per_real: number | null
+          points_required: number | null
+          points_validity_days: number | null
+          program_type: string
+          qualifying_services: string[] | null
+          reward_services: string[] | null
+          reward_value: number | null
+          updated_at: string | null
+          visits_required: number | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          points_per_real?: number | null
+          points_required?: number | null
+          points_validity_days?: number | null
+          program_type: string
+          qualifying_services?: string[] | null
+          reward_services?: string[] | null
+          reward_value?: number | null
+          updated_at?: string | null
+          visits_required?: number | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          points_per_real?: number | null
+          points_required?: number | null
+          points_validity_days?: number | null
+          program_type?: string
+          qualifying_services?: string[] | null
+          reward_services?: string[] | null
+          reward_value?: number | null
+          updated_at?: string | null
+          visits_required?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_programs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_transactions: {
+        Row: {
+          appointment_id: string | null
+          business_id: string
+          client_id: string
+          created_at: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          points_change: number | null
+          type: string
+          visits_change: number | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          business_id: string
+          client_id: string
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          points_change?: number | null
+          type: string
+          visits_change?: number | null
+        }
+        Update: {
+          appointment_id?: string | null
+          business_id?: string
+          client_id?: string
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          points_change?: number | null
+          type?: string
+          visits_change?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          brand: string | null
+          business_id: string
+          cost_price: number | null
+          created_at: string | null
+          current_quantity: number
+          id: string
+          is_active: boolean | null
+          minimum_quantity: number | null
+          name: string
+          unit: string
+          updated_at: string | null
+        }
+        Insert: {
+          brand?: string | null
+          business_id: string
+          cost_price?: number | null
+          created_at?: string | null
+          current_quantity?: number
+          id?: string
+          is_active?: boolean | null
+          minimum_quantity?: number | null
+          name: string
+          unit: string
+          updated_at?: string | null
+        }
+        Update: {
+          brand?: string | null
+          business_id?: string
+          cost_price?: number | null
+          created_at?: string | null
+          current_quantity?: number
+          id?: string
+          is_active?: boolean | null
+          minimum_quantity?: number | null
+          name?: string
+          unit?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -482,6 +737,57 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          id: string
+          movement_date: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          reason: string | null
+          type: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          id?: string
+          movement_date: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          reason?: string | null
+          type: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          id?: string
+          movement_date?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          reason?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
