@@ -40,8 +40,14 @@ const BusinessSubscription = () => {
 
       if (data?.url) {
         console.log("Redirecting to:", data.url);
-        // Usar window.location.assign para garantir o redirecionamento
-        window.location.assign(data.url);
+        // Abrir em nova aba para funcionar dentro do iframe preview
+        window.open(data.url, '_blank');
+        
+        // Mostrar mensagem de sucesso
+        toast({
+          title: "Redirecionando...",
+          description: "Abrindo página de pagamento do Stripe em uma nova aba",
+        });
       } else {
         throw new Error("URL de checkout não foi retornada");
       }
