@@ -184,28 +184,6 @@ const Auth = () => {
             
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                >
-                  <FcGoogle className="mr-2 h-5 w-5" />
-                  Entrar com Google
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Ou continue com
-                    </span>
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="login-email">E-mail</Label>
                   <Input
@@ -233,21 +211,6 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Entrando..." : "Entrar"}
                 </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                >
-                  <FcGoogle className="mr-2 h-5 w-5" />
-                  Cadastrar com Google
-                </Button>
 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -260,6 +223,21 @@ const Auth = () => {
                   </div>
                 </div>
 
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                >
+                  <FcGoogle className="mr-2 h-5 w-5" />
+                  Entrar com Google
+                </Button>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="signup">
+              <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="full-name">Nome Completo</Label>
                   <Input
@@ -281,6 +259,7 @@ const Auth = () => {
                     onChange={(e) => setBirthDate(e.target.value)}
                     required
                     max={new Date().toISOString().split('T')[0]}
+                    className="text-sm"
                   />
                 </div>
                 
@@ -342,6 +321,28 @@ const Auth = () => {
                 
                 <Button type="submit" className="w-full" variant="accent" disabled={loading}>
                   {loading ? "Criando conta..." : "Criar Conta"}
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Ou continue com
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                >
+                  <FcGoogle className="mr-2 h-5 w-5" />
+                  Cadastrar com Google
                 </Button>
               </form>
             </TabsContent>
