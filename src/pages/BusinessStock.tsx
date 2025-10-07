@@ -83,16 +83,18 @@ const BusinessStock = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard/business")}>
+        <div className="mb-6">
+          <Button variant="ghost" onClick={() => navigate("/dashboard/business")} className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
-          <h1 className="text-3xl font-bold">Estoque</h1>
-          <Button onClick={() => setShowProductForm(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Produto
-          </Button>
+          <div className="flex flex-col gap-4">
+            <h1 className="text-3xl font-bold">Estoque</h1>
+            <Button onClick={() => setShowProductForm(true)} className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Produto
+            </Button>
+          </div>
         </div>
 
         {lowStockCount > 0 && (
