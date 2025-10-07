@@ -215,25 +215,46 @@ export function RescheduleDialog({
       const startTime = parse(selectedTime, "HH:mm", new Date());
       const endTime = addMinutes(startTime, totalDuration);
 
-      // First, delete old services
-      const { error: deleteError } = await supabase
+      // First, get existing services to check what needs to be updated
+      const { data: existingServices } = await supabase
         .from("appointment_services")
-        .delete()
+        .select("service_id")
         .eq("appointment_id", appointmentId);
 
-      if (deleteError) throw deleteError;
+      const existingServiceIds = existingServices?.map(s => s.service_id) || [];
 
-      // Then insert new services
-      const serviceInserts = selectedServices.map(serviceId => ({
-        appointment_id: appointmentId,
-        service_id: serviceId
-      }));
+      // Delete services that are no longer selected
+      const servicesToDelete = existingServiceIds.filter(
+        id => !selectedServices.includes(id)
+      );
 
-      const { error: insertError } = await supabase
-        .from("appointment_services")
-        .insert(serviceInserts);
+      if (servicesToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("appointment_services")
+          .delete()
+          .eq("appointment_id", appointmentId)
+          .in("service_id", servicesToDelete);
 
-      if (insertError) throw insertError;
+        if (deleteError) throw deleteError;
+      }
+
+      // Insert only new services that don't already exist
+      const servicesToInsert = selectedServices.filter(
+        id => !existingServiceIds.includes(id)
+      );
+
+      if (servicesToInsert.length > 0) {
+        const serviceInserts = servicesToInsert.map(serviceId => ({
+          appointment_id: appointmentId,
+          service_id: serviceId
+        }));
+
+        const { error: insertError } = await supabase
+          .from("appointment_services")
+          .insert(serviceInserts);
+
+        if (insertError) throw insertError;
+      }
 
       // Finally, update appointment with new date/time/duration
       const { error: updateError } = await supabase
