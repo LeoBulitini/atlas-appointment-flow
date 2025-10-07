@@ -215,19 +215,7 @@ export function RescheduleDialog({
   };
 
   const handleSubmit = async () => {
-    console.log('[RescheduleDialog] handleSubmit called', {
-      selectedDate,
-      selectedTime,
-      selectedServices,
-      appointmentId
-    });
-
     if (!selectedDate || !selectedTime || selectedServices.length === 0) {
-      console.log('[RescheduleDialog] Validation failed', {
-        hasDate: !!selectedDate,
-        hasTime: !!selectedTime,
-        servicesCount: selectedServices.length
-      });
       toast({
         title: "Atenção",
         description: "Selecione data, horário e ao menos um serviço",
@@ -236,18 +224,7 @@ export function RescheduleDialog({
       return;
     }
 
-    if (!appointmentId) {
-      console.error('[RescheduleDialog] No appointment ID provided');
-      toast({
-        title: "Erro",
-        description: "ID do agendamento não encontrado",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
-    console.log('[RescheduleDialog] Starting reschedule process');
 
     try {
       const totalDuration = selectedServices.reduce((total, serviceId) => {
@@ -258,18 +235,11 @@ export function RescheduleDialog({
       const startTime = parse(selectedTime, "HH:mm", new Date());
       const endTime = addMinutes(startTime, totalDuration);
 
-      // First, get existing services
-      const { data: existingServices, error: fetchError } = await supabase
+      // Get existing services
+      const { data: existingServices } = await supabase
         .from("appointment_services")
         .select("service_id")
         .eq("appointment_id", appointmentId);
-
-      if (fetchError) {
-        console.error('[RescheduleDialog] Error fetching existing services:', fetchError);
-        throw fetchError;
-      }
-
-      console.log('[RescheduleDialog] Existing services:', existingServices);
 
       const existingServiceIds = existingServices?.map(s => s.service_id) || [];
 
@@ -278,28 +248,18 @@ export function RescheduleDialog({
         id => !selectedServices.includes(id)
       );
 
-      console.log('[RescheduleDialog] Services to delete:', servicesToDelete);
-
       if (servicesToDelete.length > 0) {
-        const { error: deleteError } = await supabase
+        await supabase
           .from("appointment_services")
           .delete()
           .eq("appointment_id", appointmentId)
           .in("service_id", servicesToDelete);
-
-        if (deleteError) {
-          console.error('[RescheduleDialog] Error deleting services:', deleteError);
-          throw deleteError;
-        }
-        console.log('[RescheduleDialog] Services deleted successfully');
       }
 
-      // Insert only new services that don't already exist
+      // Insert new services
       const servicesToInsert = selectedServices.filter(
         id => !existingServiceIds.includes(id)
       );
-
-      console.log('[RescheduleDialog] Services to insert:', servicesToInsert);
 
       if (servicesToInsert.length > 0) {
         const serviceInserts = servicesToInsert.map(serviceId => ({
@@ -307,38 +267,23 @@ export function RescheduleDialog({
           service_id: serviceId
         }));
 
-        const { error: insertError } = await supabase
+        await supabase
           .from("appointment_services")
           .insert(serviceInserts);
-
-        if (insertError) {
-          console.error('[RescheduleDialog] Error inserting services:', insertError);
-          throw insertError;
-        }
-        console.log('[RescheduleDialog] Services inserted successfully');
       }
 
-      // Update appointment with new date/time/duration
-      const appointmentUpdate = {
-        appointment_date: format(selectedDate, "yyyy-MM-dd"),
-        appointment_time: selectedTime,
-        end_time: format(endTime, "HH:mm:ss"),
-        service_id: selectedServices[0], // Keep for compatibility
-      };
-
-      console.log('[RescheduleDialog] Updating appointment:', appointmentUpdate);
-
+      // Update appointment with new date/time
       const { error: updateError } = await supabase
         .from("appointments")
-        .update(appointmentUpdate)
+        .update({
+          appointment_date: format(selectedDate, "yyyy-MM-dd"),
+          appointment_time: selectedTime,
+          end_time: format(endTime, "HH:mm:ss"),
+          service_id: selectedServices[0],
+        })
         .eq("id", appointmentId);
 
-      if (updateError) {
-        console.error('[RescheduleDialog] Error updating appointment:', updateError);
-        throw updateError;
-      }
-
-      console.log('[RescheduleDialog] Appointment updated successfully');
+      if (updateError) throw updateError;
 
       // Send email notification (don't block on failure)
       supabase.functions
@@ -346,11 +291,6 @@ export function RescheduleDialog({
           body: {
             appointmentId,
             type: 'appointment_rescheduled'
-          }
-        })
-        .then((emailResult) => {
-          if (emailResult.error) {
-            console.error('[Email] Error sending reschedule notification:', emailResult.error);
           }
         })
         .catch((err) => console.error('[Email] Failed to send reschedule notification:', err));
