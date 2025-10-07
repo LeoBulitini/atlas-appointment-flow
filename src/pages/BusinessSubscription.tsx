@@ -80,12 +80,9 @@ const BusinessSubscription = () => {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Escolha seu Plano ATLAS</h1>
-          <p className="text-xl text-muted-foreground mb-2">
+          <p className="text-xl text-muted-foreground">
             Gerencie sua empresa de forma profissional
           </p>
-          <Badge variant="secondary" className="text-sm">
-            ✨ 14 dias de teste grátis em todos os planos
-          </Badge>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -131,7 +128,7 @@ const BusinessSubscription = () => {
                     Processando...
                   </>
                 ) : (
-                  "Começar Teste Grátis"
+                  "Assinar Plano"
                 )}
               </Button>
             </CardContent>
@@ -178,7 +175,7 @@ const BusinessSubscription = () => {
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Começar Teste Grátis
+                    Assinar Plano
                   </>
                 )}
               </Button>
@@ -188,7 +185,7 @@ const BusinessSubscription = () => {
 
         <div className="text-center mt-12 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Todos os planos incluem 14 dias de teste gratuito. Cancele a qualquer momento.
+            Cancele a qualquer momento, sem taxas de cancelamento.
           </p>
           <p className="text-sm text-muted-foreground">
             Pagamento seguro processado pelo Stripe. Seus dados estão protegidos.

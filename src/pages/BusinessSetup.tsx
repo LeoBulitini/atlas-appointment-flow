@@ -114,19 +114,6 @@ const BusinessSetup = () => {
 
         if (error) throw error;
 
-        // Criar trial de 14 dias automaticamente
-        const trialEndDate = new Date();
-        trialEndDate.setDate(trialEndDate.getDate() + 14);
-
-        await supabase
-          .from("subscriptions")
-          .insert({
-            business_id: newBusiness.id,
-            plan_type: "standard",
-            status: "trialing",
-            trial_end_date: trialEndDate.toISOString(),
-          });
-
         toast({
           title: "Sucesso!",
           description: "Empresa cadastrada com sucesso. Escolha seu plano!",
