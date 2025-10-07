@@ -235,6 +235,19 @@ export function RescheduleDialog({
       const startTime = parse(selectedTime, "HH:mm", new Date());
       const endTime = addMinutes(startTime, totalDuration);
 
+      const newAppointmentDate = format(selectedDate, "yyyy-MM-dd");
+      const newAppointmentTime = selectedTime;
+      const newEndTime = format(endTime, "HH:mm:ss");
+
+      console.log("[RescheduleDialog] Updating appointment:", {
+        appointmentId,
+        newAppointmentDate,
+        newAppointmentTime,
+        newEndTime,
+        selectedServices,
+        totalDuration
+      });
+
       // Get existing services
       const { data: existingServices } = await supabase
         .from("appointment_services")
@@ -249,11 +262,16 @@ export function RescheduleDialog({
       );
 
       if (servicesToDelete.length > 0) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from("appointment_services")
           .delete()
           .eq("appointment_id", appointmentId)
           .in("service_id", servicesToDelete);
+        
+        if (deleteError) {
+          console.error("[RescheduleDialog] Error deleting services:", deleteError);
+          throw deleteError;
+        }
       }
 
       // Insert new services
@@ -267,23 +285,36 @@ export function RescheduleDialog({
           service_id: serviceId
         }));
 
-        await supabase
+        const { error: insertError } = await supabase
           .from("appointment_services")
           .insert(serviceInserts);
+        
+        if (insertError) {
+          console.error("[RescheduleDialog] Error inserting services:", insertError);
+          throw insertError;
+        }
       }
 
-      // Update appointment with new date/time
-      const { error: updateError } = await supabase
+      // Update appointment with new date/time and ensure updated_at is refreshed
+      const { data: updatedAppointment, error: updateError } = await supabase
         .from("appointments")
         .update({
-          appointment_date: format(selectedDate, "yyyy-MM-dd"),
-          appointment_time: selectedTime,
-          end_time: format(endTime, "HH:mm:ss"),
+          appointment_date: newAppointmentDate,
+          appointment_time: newAppointmentTime,
+          end_time: newEndTime,
           service_id: selectedServices[0],
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", appointmentId);
+        .eq("id", appointmentId)
+        .select()
+        .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("[RescheduleDialog] Error updating appointment:", updateError);
+        throw updateError;
+      }
+
+      console.log("[RescheduleDialog] Appointment updated successfully:", updatedAppointment);
 
       // Send email notification (don't block on failure)
       supabase.functions
@@ -300,10 +331,16 @@ export function RescheduleDialog({
         description: "Agendamento alterado com sucesso",
       });
 
-      onRescheduleSuccess();
+      // Wait for data refresh before closing
+      console.log("[RescheduleDialog] Triggering data refresh...");
+      await onRescheduleSuccess();
+      
+      // Small delay to ensure UI updates
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Error rescheduling:", error);
+      console.error("[RescheduleDialog] Error rescheduling:", error);
       toast({
         title: "Erro",
         description: error.message || "Não foi possível alterar o agendamento",

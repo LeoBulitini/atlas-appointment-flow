@@ -88,6 +88,8 @@ const ClientDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      console.log("[ClientDashboard] Fetching appointments for user:", user.id);
+
       const { data, error } = await supabase
         .from("appointments")
         .select(`
@@ -99,9 +101,11 @@ const ClientDashboard = () => {
           )
         `)
         .eq("client_id", user.id)
-        .order("appointment_date", { ascending: false });
+        .order("updated_at", { ascending: false });
 
       if (error) throw error;
+
+      console.log("[ClientDashboard] Fetched appointments:", data?.length || 0);
       
       // Ordenar por status: pendentes, confirmados, concluídos e cancelados
       const sortedData = (data || []).sort((a, b) => {
@@ -127,7 +131,7 @@ const ClientDashboard = () => {
       
       setAppointments(sortedData);
     } catch (error) {
-      console.error("Error fetching appointments:", error);
+      console.error("[ClientDashboard] Error fetching appointments:", error);
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar seus agendamentos." });
     } finally {
       setLoading(false);
