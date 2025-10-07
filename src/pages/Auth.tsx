@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "lucide-react";
 import { maskPhoneInput, validatePhoneNumber } from "@/lib/phone-utils";
+import { FcGoogle } from "react-icons/fc";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [birthDate, setBirthDate] = useState("");
 
   useEffect(() => {
     // Check if user is already logged in
@@ -35,6 +37,31 @@ const Auth = () => {
       }
     });
   }, [navigate]);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro no login com Google",
+        description: error.message,
+      });
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +104,16 @@ const Auth = () => {
       });
       return;
     }
+
+    // Validate birth date
+    if (!birthDate) {
+      toast({
+        variant: "destructive",
+        title: "Data de nascimento obrigatória",
+        description: "Por favor, insira sua data de nascimento",
+      });
+      return;
+    }
     
     setLoading(true);
 
@@ -89,6 +126,7 @@ const Auth = () => {
             full_name: fullName,
             user_type: userType,
             phone: phone,
+            birth_date: birthDate,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -146,6 +184,28 @@ const Auth = () => {
             
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                >
+                  <FcGoogle className="mr-2 h-5 w-5" />
+                  Entrar com Google
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Ou continue com
+                    </span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="login-email">E-mail</Label>
                   <Input
@@ -178,6 +238,28 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                >
+                  <FcGoogle className="mr-2 h-5 w-5" />
+                  Cadastrar com Google
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Ou continue com
+                    </span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="full-name">Nome Completo</Label>
                   <Input
@@ -189,9 +271,21 @@ const Auth = () => {
                     required
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="birth-date">Data de Nascimento</Label>
+                  <Input
+                    id="birth-date"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    required
+                    max={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Celular *</Label>
+                  <Label htmlFor="phone">Celular</Label>
                   <Input
                     id="phone"
                     type="tel"

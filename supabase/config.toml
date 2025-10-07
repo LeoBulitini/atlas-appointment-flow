@@ -15,6 +15,9 @@ verify_jwt = true
 [functions.log-error]
 verify_jwt = false
 
+[functions.send-birthday-emails]
+verify_jwt = false
+
 [edge-runtime]
 policy = "per_worker"
 
@@ -23,3 +26,6 @@ schedule = "*/15 * * * *"
 
 [functions.send-reminder-emails.cron]
 schedule = "*/5 * * * *"
+
+[functions.send-birthday-emails.cron]
+schedule = "0 9 * * *"
