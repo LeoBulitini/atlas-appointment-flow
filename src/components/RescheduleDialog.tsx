@@ -195,7 +195,19 @@ export function RescheduleDialog({
   };
 
   const handleSubmit = async () => {
+    console.log('[RescheduleDialog] handleSubmit called', {
+      selectedDate,
+      selectedTime,
+      selectedServices,
+      appointmentId
+    });
+
     if (!selectedDate || !selectedTime || selectedServices.length === 0) {
+      console.log('[RescheduleDialog] Validation failed', {
+        hasDate: !!selectedDate,
+        hasTime: !!selectedTime,
+        servicesCount: selectedServices.length
+      });
       toast({
         title: "Atenção",
         description: "Selecione data, horário e ao menos um serviço",
@@ -204,16 +216,20 @@ export function RescheduleDialog({
       return;
     }
 
+    if (!appointmentId) {
+      console.error('[RescheduleDialog] No appointment ID provided');
+      toast({
+        title: "Erro",
+        description: "ID do agendamento não encontrado",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
+    console.log('[RescheduleDialog] Starting reschedule process');
 
     try {
-      console.log('[RescheduleDialog] Starting reschedule process', {
-        appointmentId,
-        selectedServices,
-        selectedDate: format(selectedDate, "yyyy-MM-dd"),
-        selectedTime
-      });
-
       const totalDuration = selectedServices.reduce((total, serviceId) => {
         const service = services.find(s => s.id === serviceId);
         return total + (service?.duration_minutes || 0);
