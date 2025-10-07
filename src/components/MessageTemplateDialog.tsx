@@ -51,6 +51,8 @@ export function MessageTemplateDialog({
   const [services, setServices] = useState<ServiceData[]>([]);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
 
   useEffect(() => {
     if (open) {
@@ -58,14 +60,21 @@ export function MessageTemplateDialog({
     } else {
       setFormData({});
       setSelectedDate(undefined);
+      setStartDate(undefined);
+      setEndDate(undefined);
     }
   }, [open, businessId]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      // Para templates de horários da semana, carregar com período personalizado se selecionado
+      const shouldUseCustomPeriod = template.id === "horarios-semana" && startDate && endDate;
+      
       const [slots, upcomingAppts, activeServices] = await Promise.all([
-        getAvailableSlots(businessId, 7),
+        shouldUseCustomPeriod 
+          ? getAvailableSlots(businessId, startDate, endDate)
+          : getAvailableSlots(businessId),
         getUpcomingAppointments(businessId),
         getActiveServices(businessId),
       ]);
@@ -91,6 +100,8 @@ export function MessageTemplateDialog({
   const needsPromoDescription = template.fields.includes("[DESCRIÇÃO DA PROMOÇÃO/NOVIDADE]");
 
   const needsDateSelection = template.fields.includes("[DATA]") && !needsAppointmentSelection;
+
+  const needsDateRangeSelection = template.id === "horarios-semana";
 
   const handleServiceChange = (serviceId: string) => {
     const service = services.find((s) => s.id === serviceId);
@@ -293,6 +304,76 @@ export function MessageTemplateDialog({
                     }
                     rows={3}
                   />
+                </div>
+              )}
+
+              {needsDateRangeSelection && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Data Inicial (opcional)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Hoje"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => {
+                            setStartDate(date);
+                            if (date && endDate) {
+                              loadData();
+                            }
+                          }}
+                          initialFocus
+                          className="pointer-events-auto"
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data Final (opcional)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : "Próximos 7 dias"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => {
+                            setEndDate(date);
+                            if (startDate && date) {
+                              loadData();
+                            }
+                          }}
+                          disabled={(date) => startDate ? date < startDate : false}
+                          initialFocus
+                          className="pointer-events-auto"
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               )}
 

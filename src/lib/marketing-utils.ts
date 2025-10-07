@@ -29,7 +29,8 @@ export interface AppointmentData {
  */
 export async function getAvailableSlots(
   businessId: string,
-  days: number = 7
+  startDate?: Date,
+  endDate?: Date
 ): Promise<AvailableSlot[]> {
   try {
     // Buscar horário de funcionamento do negócio
@@ -48,35 +49,44 @@ export async function getAvailableSlots(
     const now = new Date();
     const slots: AvailableSlot[] = [];
 
+    // Definir período de busca
+    const searchStartDate = startDate || now;
+    const searchEndDate = endDate || addDays(searchStartDate, 7);
+    const daysDiff = Math.ceil((searchEndDate.getTime() - searchStartDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    console.log(`Searching slots from ${format(searchStartDate, "yyyy-MM-dd")} to ${format(searchEndDate, "yyyy-MM-dd")}`);
+
     // Buscar todos os agendamentos confirmados/pendentes no período
     const { data: appointments } = await supabase
       .from("appointments")
       .select("appointment_date, appointment_time, end_time, services!inner(duration_minutes)")
       .eq("business_id", businessId)
       .in("status", ["pending", "confirmed"])
-      .gte("appointment_date", format(now, "yyyy-MM-dd"))
-      .lte("appointment_date", format(addDays(now, days), "yyyy-MM-dd"));
+      .gte("appointment_date", format(searchStartDate, "yyyy-MM-dd"))
+      .lte("appointment_date", format(searchEndDate, "yyyy-MM-dd"));
 
     console.log(`Found ${appointments?.length || 0} appointments`);
 
     // Mapear dias da semana
     const weekDays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-    // Para cada dia
-    for (let i = 0; i < days; i++) {
-      const currentDate = addDays(startOfDay(now), i);
-      const isToday = i === 0;
+    // Para cada dia no período
+    for (let i = 0; i < daysDiff; i++) {
+      const currentDate = addDays(startOfDay(searchStartDate), i);
+      const isToday = format(currentDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
       const dayOfWeek = weekDays[currentDate.getDay()];
       const dayHours = openingHours[dayOfWeek];
 
-      if (!dayHours || dayHours.closed) {
+      console.log(`Processing ${dayOfWeek} (${format(currentDate, "yyyy-MM-dd")}):`, dayHours);
+
+      if (!dayHours || !dayHours.isOpen) {
         console.log(`${dayOfWeek} is closed`);
         continue;
       }
 
       // Gerar slots de 30 em 30 minutos
-      const [openHour, openMinute] = dayHours.open.split(":").map(Number);
-      const [closeHour, closeMinute] = dayHours.close.split(":").map(Number);
+      const [openHour, openMinute] = dayHours.openTime.split(":").map(Number);
+      const [closeHour, closeMinute] = dayHours.closeTime.split(":").map(Number);
 
       let currentTime = openHour * 60 + openMinute; // em minutos
       const closeTime = closeHour * 60 + closeMinute;
