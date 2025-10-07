@@ -33,22 +33,50 @@ export function LoyaltyBalances({ businessId, refreshKey }: LoyaltyBalancesProps
       .from("loyalty_programs")
       .select("*")
       .eq("business_id", businessId)
-      .single();
+      .maybeSingle();
 
     if (programData) {
       setProgram(programData);
 
-      const { data: balancesData } = await supabase
-        .from("loyalty_balances")
+      // Buscar todos os clientes do negócio
+      const { data: clientsData } = await supabase
+        .from("business_clients")
         .select(`
-          *,
-          profiles(full_name, phone)
+          client_id,
+          profiles:client_id(full_name, phone)
         `)
-        .eq("business_id", businessId)
-        .order("points", { ascending: false });
+        .eq("business_id", businessId);
 
-      if (balancesData) {
-        setBalances(balancesData);
+      if (clientsData) {
+        // Buscar saldos de fidelidade existentes
+        const { data: balancesData } = await supabase
+          .from("loyalty_balances")
+          .select("*")
+          .eq("business_id", businessId);
+
+        // Criar mapa de saldos por client_id
+        const balancesMap = new Map(
+          balancesData?.map(b => [b.client_id, b]) || []
+        );
+
+        // Combinar clientes com seus saldos (ou criar registro com 0)
+        const allBalances = clientsData.map(client => {
+          const existingBalance = balancesMap.get(client.client_id);
+          return existingBalance || {
+            id: null,
+            client_id: client.client_id,
+            business_id: businessId,
+            points: 0,
+            visits: 0,
+            profiles: client.profiles
+          };
+        });
+
+        // Ordenar por pontos/visitas
+        const sortField = programData.program_type === "pontos" ? "points" : "visits";
+        allBalances.sort((a, b) => (b[sortField] || 0) - (a[sortField] || 0));
+        
+        setBalances(allBalances);
       }
     }
     setLoading(false);
@@ -60,14 +88,28 @@ export function LoyaltyBalances({ businessId, refreshKey }: LoyaltyBalancesProps
     try {
       const value = parseInt(adjustValue);
       const field = program.program_type === "pontos" ? "points" : "visits";
-      const newValue = selectedBalance[field] + value;
+      const newValue = (selectedBalance[field] || 0) + value;
 
-      const { error: balanceError } = await supabase
-        .from("loyalty_balances")
-        .update({ [field]: newValue })
-        .eq("id", selectedBalance.id);
+      // Se o cliente não tem registro ainda, criar um novo
+      if (!selectedBalance.id) {
+        const { error: insertError } = await supabase
+          .from("loyalty_balances")
+          .insert({
+            business_id: businessId,
+            client_id: selectedBalance.client_id,
+            [field]: Math.max(0, newValue), // Não permitir valores negativos
+          });
 
-      if (balanceError) throw balanceError;
+        if (insertError) throw insertError;
+      } else {
+        // Atualizar registro existente
+        const { error: updateError } = await supabase
+          .from("loyalty_balances")
+          .update({ [field]: Math.max(0, newValue) })
+          .eq("id", selectedBalance.id);
+
+        if (updateError) throw updateError;
+      }
 
       const { error: transactionError } = await supabase
         .from("loyalty_transactions")
