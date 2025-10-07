@@ -334,21 +334,7 @@ export function RescheduleDialog({
         description: "Agendamento alterado com sucesso",
       });
 
-      // Wait for data refresh before closing
-      console.log("[RescheduleDialog] Triggering data refresh...");
       await onRescheduleSuccess();
-      
-      console.log("[RescheduleDialog] Data refreshed, closing dialog...");
-      
-      // Reset state before closing
-      setSelectedServices([]);
-      setSelectedDate(undefined);
-      setSelectedTime('');
-      setAvailableSlots([]);
-      
-      // Small delay to ensure UI updates
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       onOpenChange(false);
     } catch (error: any) {
       console.error("[RescheduleDialog] Error rescheduling:", error);

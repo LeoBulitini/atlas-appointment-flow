@@ -20,6 +20,7 @@ interface Appointment {
   notes: string | null;
   business_id: string;
   service_id: string;
+  updated_at: string;
   businesses: { name: string; address: string; city: string };
   appointment_services: Array<{
     service_id: string;
@@ -362,11 +363,11 @@ const ClientDashboard = () => {
             onReviewSubmitted={handleReviewSubmitted}
           />
           <RescheduleDialog
+            key={`${selectedAppointment.id}-${selectedAppointment.updated_at}`}
             open={rescheduleDialogOpen}
             onOpenChange={(open) => {
               setRescheduleDialogOpen(open);
               if (!open) {
-                // Clear selected appointment when closing to force fresh data on reopen
                 setSelectedAppointment(null);
               }
             }}
@@ -376,9 +377,8 @@ const ClientDashboard = () => {
             currentTime={selectedAppointment.appointment_time}
             currentServiceId={selectedAppointment.service_id}
             onRescheduleSuccess={async () => {
-              console.log("[ClientDashboard] Refreshing appointments after reschedule");
               await fetchAppointments();
-              console.log("[ClientDashboard] Appointments refreshed successfully");
+              setRescheduleDialogOpen(false);
             }}
           />
         </>
