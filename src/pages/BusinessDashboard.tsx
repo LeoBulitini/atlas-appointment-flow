@@ -23,6 +23,7 @@ import { EditServiceDialog } from "@/components/EditServiceDialog";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit } from "lucide-react";
+import SubscriptionBanner from "@/components/SubscriptionBanner";
 
 const BRAZIL_TZ = 'America/Sao_Paulo';
 
@@ -651,6 +652,8 @@ const BusinessDashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        <SubscriptionBanner />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Card>

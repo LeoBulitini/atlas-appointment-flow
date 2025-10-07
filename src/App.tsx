@@ -18,9 +18,11 @@ import BusinessCalendar from "./pages/BusinessCalendar";
 import BusinessFinancial from "./pages/BusinessFinancial";
 import BusinessStock from "./pages/BusinessStock";
 import BusinessLoyalty from "./pages/BusinessLoyalty";
+import BusinessSubscription from "./pages/BusinessSubscription";
 import Booking from "./pages/Booking";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SubscriptionGuard from "./components/SubscriptionGuard";
 
 const queryClient = new QueryClient();
 
@@ -55,7 +57,17 @@ const App = () => (
             path="/dashboard/business"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessDashboard />
+                <SubscriptionGuard>
+                  <BusinessDashboard />
+                </SubscriptionGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/subscription"
+            element={
+              <ProtectedRoute requiredUserType="business">
+                <BusinessSubscription />
               </ProtectedRoute>
             }
           />
@@ -63,7 +75,9 @@ const App = () => (
             path="/business/settings"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessSettings />
+                <SubscriptionGuard>
+                  <BusinessSettings />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -71,7 +85,9 @@ const App = () => (
             path="/business/clients"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessClients />
+                <SubscriptionGuard>
+                  <BusinessClients />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -79,7 +95,9 @@ const App = () => (
             path="/business/reviews"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessReviews />
+                <SubscriptionGuard>
+                  <BusinessReviews />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -87,7 +105,9 @@ const App = () => (
             path="/business/analytics"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessAnalytics />
+                <SubscriptionGuard>
+                  <BusinessAnalytics />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -95,7 +115,9 @@ const App = () => (
             path="/business/marketing"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessMarketing />
+                <SubscriptionGuard requiredPlan="professional">
+                  <BusinessMarketing />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -103,7 +125,9 @@ const App = () => (
             path="/business/calendar"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessCalendar />
+                <SubscriptionGuard>
+                  <BusinessCalendar />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -111,7 +135,9 @@ const App = () => (
             path="/business/financial"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessFinancial />
+                <SubscriptionGuard>
+                  <BusinessFinancial />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -119,7 +145,9 @@ const App = () => (
             path="/business/stock"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessStock />
+                <SubscriptionGuard requiredPlan="professional">
+                  <BusinessStock />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
@@ -127,7 +155,9 @@ const App = () => (
             path="/business/loyalty"
             element={
               <ProtectedRoute requiredUserType="business">
-                <BusinessLoyalty />
+                <SubscriptionGuard requiredPlan="professional">
+                  <BusinessLoyalty />
+                </SubscriptionGuard>
               </ProtectedRoute>
             }
           />
