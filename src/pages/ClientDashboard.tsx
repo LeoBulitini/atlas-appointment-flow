@@ -139,7 +139,13 @@ const ClientDashboard = () => {
   };
 
   const handleRebook = (appointment: Appointment) => {
-    navigate(`/booking/${appointment.business_id}`);
+    // Extract service IDs from the appointment
+    const serviceIds = appointment.appointment_services
+      .map(as => as.service_id)
+      .join(',');
+    
+    // Navigate with service IDs as query params
+    navigate(`/booking/${appointment.business_id}?services=${serviceIds}`);
   };
 
   const openReviewDialog = (appointment: Appointment) => {

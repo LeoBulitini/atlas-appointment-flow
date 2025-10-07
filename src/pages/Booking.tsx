@@ -175,6 +175,10 @@ const Booking = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  // Read pre-selected service IDs from URL
+  const searchParams = new URLSearchParams(window.location.search);
+  const preselectedServiceIds = searchParams.get('services')?.split(',').filter(Boolean) || [];
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
@@ -251,6 +255,16 @@ const Booking = () => {
 
       if (servicesError) throw servicesError;
       setServices(servicesData || []);
+
+      // Auto-select services if provided in URL (e.g., from "Agendar novamente")
+      if (preselectedServiceIds.length > 0 && servicesData) {
+        const validServiceIds = preselectedServiceIds.filter(id => 
+          servicesData.some(service => service.id === id && service.is_active)
+        );
+        if (validServiceIds.length > 0) {
+          setSelectedServices(validServiceIds);
+        }
+      }
 
       const { data: portfolioData } = await supabase
         .from("business_portfolio")
