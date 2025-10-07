@@ -713,11 +713,20 @@ const Booking = () => {
                     <div className="mt-2 pt-2 border-t">
                       <h4 className="font-semibold mb-2 text-sm">Formas de Pagamento:</h4>
                       <div className="flex flex-wrap gap-2">
-                        {business.payment_methods.map((method) => (
-                          <Badge key={method} variant="secondary" className="text-xs">
-                            {method}
-                          </Badge>
-                        ))}
+                        {business.payment_methods.map((method) => {
+                          const paymentMethodTranslations: Record<string, string> = {
+                            'debit': 'Cartão de Débito',
+                            'credit': 'Cartão de Crédito',
+                            'cash': 'Dinheiro',
+                            'pix': 'Pix',
+                          };
+                          const translatedMethod = paymentMethodTranslations[method.toLowerCase()] || method;
+                          return (
+                            <Badge key={method} variant="secondary" className="text-xs">
+                              {translatedMethod}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
