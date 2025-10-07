@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const PLAN_PRICES = {
-  standard: "price_1QTNH2P6z9JtGY8g8v2rZQXK", // Atlas Plano Standard - R$ 29,90
-  professional: "price_1QTNH8P6z9JtGY8gO8XqYdLZ", // Atlas Plano Professional - R$ 59,90
+  standard: "price_1SFcf4FMMTUWzveiV1TfxvKr", // Atlas Plano Standard - R$ 29,90
+  professional: "price_1SFch2FMMTUWzveiaqiqpnw8", // Atlas Plano Professional - R$ 59,90
 };
 
 const logStep = (step: string, details?: any) => {

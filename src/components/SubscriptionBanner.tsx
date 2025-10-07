@@ -38,7 +38,10 @@ const SubscriptionBanner = () => {
 
   if (loading || !subscriptionStatus) return null;
 
-  const { status, plan, days_remaining } = subscriptionStatus;
+  const { status, plan, days_remaining, has_access } = subscriptionStatus;
+
+  // Don't show banner if no access (overlay will show instead)
+  if (!has_access) return null;
 
   // Don't show banner if everything is fine
   if (status === "active" && days_remaining > 7) return null;
