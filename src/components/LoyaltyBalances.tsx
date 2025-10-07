@@ -41,34 +41,51 @@ export function LoyaltyBalances({ businessId, refreshKey }: LoyaltyBalancesProps
       // Buscar todos os clientes do negócio
       const { data: clientsData } = await supabase
         .from("business_clients")
-        .select(`
-          client_id,
-          profiles:client_id(full_name, phone)
-        `)
+        .select("client_id")
         .eq("business_id", businessId);
 
       if (clientsData) {
+        const clientIds = clientsData.map(c => c.client_id);
+
+        // Buscar perfis dos clientes
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, full_name, phone")
+          .in("id", clientIds);
+
         // Buscar saldos de fidelidade existentes
         const { data: balancesData } = await supabase
           .from("loyalty_balances")
           .select("*")
           .eq("business_id", businessId);
 
-        // Criar mapa de saldos por client_id
+        // Criar mapas para fácil acesso
+        const profilesMap = new Map(
+          profilesData?.map(p => [p.id, p]) || []
+        );
         const balancesMap = new Map(
           balancesData?.map(b => [b.client_id, b]) || []
         );
 
-        // Combinar clientes com seus saldos (ou criar registro com 0)
-        const allBalances = clientsData.map(client => {
-          const existingBalance = balancesMap.get(client.client_id);
-          return existingBalance || {
+        // Combinar clientes com seus saldos e perfis
+        const allBalances = clientIds.map(clientId => {
+          const existingBalance = balancesMap.get(clientId);
+          const profile = profilesMap.get(clientId);
+          
+          if (existingBalance) {
+            return {
+              ...existingBalance,
+              profiles: profile
+            };
+          }
+          
+          return {
             id: null,
-            client_id: client.client_id,
+            client_id: clientId,
             business_id: businessId,
             points: 0,
             visits: 0,
-            profiles: client.profiles
+            profiles: profile
           };
         });
 
