@@ -821,16 +821,6 @@ export type Database = {
               p_end_time: string
               p_notes: string
               p_service_id: string
-            }
-          | {
-              p_appointment_date: string
-              p_appointment_time: string
-              p_auto_confirm?: boolean
-              p_business_id: string
-              p_client_id: string
-              p_end_time: string
-              p_notes: string
-              p_service_id: string
               p_used_loyalty_redemption?: boolean
             }
           | {

@@ -518,11 +518,30 @@ const Booking = () => {
   };
 
   const handleServiceToggle = (serviceId: string) => {
+    // Se o resgate está ativo, só permite serviços elegíveis
+    if (useRedemption && loyaltyProgram?.reward_services && loyaltyProgram.reward_services.length > 0) {
+      if (!loyaltyProgram.reward_services.includes(serviceId)) {
+        toast({
+          title: "Serviço não disponível",
+          description: "Este serviço não está disponível para resgate de recompensa",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setSelectedServices(prev =>
       prev.includes(serviceId)
         ? prev.filter(id => id !== serviceId)
         : [...prev, serviceId]
     );
+  };
+
+  const isServiceEligibleForRedemption = (serviceId: string) => {
+    if (!loyaltyProgram?.reward_services || loyaltyProgram.reward_services.length === 0) {
+      return true; // Se não há restrição, todos são elegíveis
+    }
+    return loyaltyProgram.reward_services.includes(serviceId);
   };
 
   const canRedeemReward = () => {
@@ -904,6 +923,43 @@ const Booking = () => {
               
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Loyalty Redemption Option - MOVED TO TOP */}
+                  {loyaltyProgram && clientBalance && canRedeemReward() && (
+                    <Card className="border-2 border-primary">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={useRedemption}
+                            onCheckedChange={(checked) => {
+                              setUseRedemption(checked as boolean);
+                              // Limpar serviços selecionados ao ativar resgate
+                              if (checked && loyaltyProgram?.reward_services && loyaltyProgram.reward_services.length > 0) {
+                                setSelectedServices(prev => 
+                                  prev.filter(id => loyaltyProgram.reward_services.includes(id))
+                                );
+                              }
+                            }}
+                          />
+                          <Gift className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-primary">Usar Recompensa de Fidelidade</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {loyaltyProgram.program_type === 'pontos' 
+                                ? `Você tem ${clientBalance.points} pontos! Resgate ${loyaltyProgram.points_required} pontos neste agendamento.`
+                                : `Você tem ${clientBalance.visits} visitas! Resgate ${loyaltyProgram.visits_required} visitas neste agendamento.`
+                              }
+                            </p>
+                            {loyaltyProgram.reward_services && loyaltyProgram.reward_services.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Serviços disponíveis para resgate: {getEligibleRewardServices().join(', ')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* Service Selection */}
                   <div className="space-y-2">
                     <Label>Serviços *</Label>
@@ -913,89 +969,73 @@ const Booking = () => {
                           Nenhum serviço disponível no momento
                         </p>
                       ) : (
-                        services.map((service) => (
-                          <label
-                            key={service.id}
-                            className="block cursor-pointer"
-                          >
-                            <Card
-                              className={`transition-smooth ${
-                                selectedServices.includes(service.id)
-                                  ? "ring-2 ring-primary"
-                                  : "hover:shadow-md"
-                              }`}
+                        services.map((service) => {
+                          const isEligible = isServiceEligibleForRedemption(service.id);
+                          const isDisabled = useRedemption && !isEligible;
+                          
+                          return (
+                            <label
+                              key={service.id}
+                              className={`block ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                             >
-                              <CardContent className="p-4">
-                                <div className="flex items-start gap-3">
-                                  <Checkbox
-                                    checked={selectedServices.includes(service.id)}
-                                    onCheckedChange={() => handleServiceToggle(service.id)}
-                                  />
-                                  {service.image_url && (
-                                    <img src={service.image_url} alt={service.name} className="w-20 h-20 object-cover rounded-lg" />
-                                  )}
-                                  <div className="flex-1">
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <h4 className="font-semibold">{service.name}</h4>
-                                      {service.description && (
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                          {service.description}
-                                        </p>
-                                      )}
-                                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                                        <Clock className="h-4 w-4" />
-                                        <span>{service.duration_minutes} min</span>
+                              <Card
+                                className={`transition-smooth ${
+                                  selectedServices.includes(service.id)
+                                    ? "ring-2 ring-primary"
+                                    : isDisabled 
+                                      ? "bg-muted"
+                                      : "hover:shadow-md"
+                                }`}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    <Checkbox
+                                      checked={selectedServices.includes(service.id)}
+                                      onCheckedChange={() => handleServiceToggle(service.id)}
+                                      disabled={isDisabled}
+                                    />
+                                    {service.image_url && (
+                                      <img src={service.image_url} alt={service.name} className="w-20 h-20 object-cover rounded-lg" />
+                                    )}
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <h4 className="font-semibold">{service.name}</h4>
+                                          {isDisabled && (
+                                            <Badge variant="secondary" className="mt-1 text-xs">
+                                              Não disponível para resgate
+                                            </Badge>
+                                          )}
+                                          {service.description && (
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                              {service.description}
+                                            </p>
+                                          )}
+                                          <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                                            <Clock className="h-4 w-4" />
+                                            <span>{service.duration_minutes} min</span>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-lg font-bold text-primary">
+                                            R$ {service.price.toFixed(2)}
+                                          </p>
+                                        </div>
                                       </div>
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-lg font-bold text-primary">
-                                        R$ {service.price.toFixed(2)}
-                                      </p>
-                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                          </label>
-                        ))
+                                </CardContent>
+                              </Card>
+                            </label>
+                          );
+                        })
                       )}
                     </div>
-                     {selectedServices.length > 0 && (
+                    {selectedServices.length > 0 && (
                       <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
                         <p className="font-semibold text-foreground">Total: R$ {totalPrice.toFixed(2)}</p>
                         <p className="text-sm text-muted-foreground">Duração: {totalDuration} minutos</p>
                       </div>
-                    )}
-
-                    {/* Loyalty Redemption Option */}
-                    {loyaltyProgram && clientBalance && canRedeemReward() && (
-                      <Card className="border-2 border-primary">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <Checkbox
-                              checked={useRedemption}
-                              onCheckedChange={(checked) => setUseRedemption(checked as boolean)}
-                            />
-                            <Gift className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-primary">Usar Recompensa de Fidelidade</h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {loyaltyProgram.program_type === 'pontos' 
-                                  ? `Você tem ${clientBalance.points} pontos! Resgate ${loyaltyProgram.points_required} pontos neste agendamento.`
-                                  : `Você tem ${clientBalance.visits} visitas! Resgate ${loyaltyProgram.visits_required} visitas neste agendamento.`
-                                }
-                              </p>
-                              {getEligibleRewardServices().length > 0 && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Serviços disponíveis para resgate: {getEligibleRewardServices().join(', ')}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
                     )}
                   </div>
 
