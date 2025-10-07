@@ -296,7 +296,7 @@ export function RescheduleDialog({
       }
 
       // Update appointment with new date/time and ensure updated_at is refreshed
-      const { data: updatedAppointment, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from("appointments")
         .update({
           appointment_date: newAppointmentDate,
@@ -305,16 +305,14 @@ export function RescheduleDialog({
           service_id: selectedServices[0],
           updated_at: new Date().toISOString(),
         })
-        .eq("id", appointmentId)
-        .select()
-        .single();
+        .eq("id", appointmentId);
 
       if (updateError) {
         console.error("[RescheduleDialog] Error updating appointment:", updateError);
         throw updateError;
       }
 
-      console.log("[RescheduleDialog] Appointment updated successfully:", updatedAppointment);
+      console.log("[RescheduleDialog] Appointment updated successfully");
 
       // Send email notification (don't block on failure)
       supabase.functions
