@@ -51,6 +51,7 @@ const BusinessDashboard = () => {
   const [serviceDescription, setServiceDescription] = useState("");
   const [serviceDuration, setServiceDuration] = useState("");
   const [servicePrice, setServicePrice] = useState("");
+  const [serviceImageUrl, setServiceImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const initDashboard = async () => {
@@ -180,6 +181,7 @@ const BusinessDashboard = () => {
           description: serviceDescription,
           duration_minutes: parseInt(serviceDuration),
           price: parseFloat(servicePrice),
+          image_url: serviceImageUrl,
         })
         .eq("id", editingService.id);
 
@@ -192,6 +194,7 @@ const BusinessDashboard = () => {
       setServiceDescription("");
       setServiceDuration("");
       setServicePrice("");
+      setServiceImageUrl(null);
       fetchBusinessData();
     } catch (error: any) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
@@ -204,6 +207,7 @@ const BusinessDashboard = () => {
     setServiceDescription(service.description || "");
     setServiceDuration(service.duration_minutes.toString());
     setServicePrice(service.price.toString());
+    setServiceImageUrl(service.image_url || null);
     setShowEditServiceDialog(true);
   };
 
@@ -787,6 +791,8 @@ const BusinessDashboard = () => {
         setServiceDuration={setServiceDuration}
         servicePrice={servicePrice}
         setServicePrice={setServicePrice}
+        serviceImageUrl={serviceImageUrl}
+        setServiceImageUrl={setServiceImageUrl}
         onSubmit={handleEditService}
       />
     </div>
