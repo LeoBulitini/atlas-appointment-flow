@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Star, DollarSign, RefreshCw, LogOut } from "lucide-react";
+import { Calendar, Clock, Star, DollarSign, RefreshCw, LogOut, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewDialog } from "@/components/ReviewDialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
@@ -21,6 +21,7 @@ interface Appointment {
   business_id: string;
   service_id: string;
   updated_at: string;
+  used_loyalty_redemption: boolean;
   businesses: { name: string; address: string; city: string };
   appointment_services: Array<{
     service_id: string;
@@ -312,6 +313,12 @@ const ClientDashboard = () => {
                                 <DollarSign className="h-4 w-4" />
                                 R$ {totalPrice.toFixed(2)}
                               </span>
+                              {appointment.used_loyalty_redemption && (
+                                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                                  <Gift className="h-3 w-3 mr-1" />
+                                  Recompensa
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           {getStatusBadge(appointment.status)}

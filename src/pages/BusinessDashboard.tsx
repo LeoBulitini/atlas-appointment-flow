@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power, RefreshCw, Megaphone, Settings, LogOut } from "lucide-react";
+import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power, RefreshCw, Megaphone, Settings, LogOut, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -476,6 +476,12 @@ const BusinessDashboard = () => {
                 <DollarSign className="h-4 w-4" />
                 R$ {totalPrice.toFixed(2)}
               </span>
+              {appointment.used_loyalty_redemption && (
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                  <Gift className="h-3 w-3 mr-1" />
+                  Recompensa
+                </Badge>
+              )}
             </div>
           </div>
 

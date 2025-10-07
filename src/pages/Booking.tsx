@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, MapPin, Phone, Mail, Clock, DollarSign, MessageCircle, X } from "lucide-react";
+import { Loader2, MapPin, Phone, Mail, Clock, DollarSign, MessageCircle, X, Gift } from "lucide-react";
 import { format, parse, addMinutes, isBefore, isToday, startOfDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
@@ -587,7 +587,8 @@ const Booking = () => {
           p_appointment_time: selectedTime,
           p_end_time: format(endTime, "HH:mm:ss"),
           p_notes: notes || null,
-          p_auto_confirm: business.auto_confirm_appointments || false
+          p_auto_confirm: business.auto_confirm_appointments || false,
+          p_used_loyalty_redemption: useRedemption
         });
 
       if (rpcError) {
@@ -613,18 +614,6 @@ const Booking = () => {
           });
         }
         return;
-      }
-
-      // Se usar resgate, atualizar o campo na appointment
-      if (useRedemption) {
-        const { error: updateError } = await supabase
-          .from("appointments")
-          .update({ used_loyalty_redemption: true })
-          .eq("id", resultData.appointment_id);
-
-        if (updateError) {
-          console.error("Error updating redemption flag:", updateError);
-        }
       }
 
       // Insert all selected services first
@@ -989,8 +978,9 @@ const Booking = () => {
                               checked={useRedemption}
                               onCheckedChange={(checked) => setUseRedemption(checked as boolean)}
                             />
+                            <Gift className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
-                              <h4 className="font-semibold text-primary">🎁 Usar Recompensa de Fidelidade</h4>
+                              <h4 className="font-semibold text-primary">Usar Recompensa de Fidelidade</h4>
                               <p className="text-sm text-muted-foreground mt-1">
                                 {loyaltyProgram.program_type === 'pontos' 
                                   ? `Você tem ${clientBalance.points} pontos! Resgate ${loyaltyProgram.points_required} pontos neste agendamento.`
