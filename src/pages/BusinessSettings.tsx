@@ -196,6 +196,7 @@ export default function BusinessSettings() {
         description: editingService.description,
         price: editingService.price,
         duration_minutes: editingService.duration_minutes,
+        image_url: editingService.image_url,
       })
       .eq("id", editingService.id);
 
@@ -208,6 +209,16 @@ export default function BusinessSettings() {
       setEditingService(null);
       fetchBusinessData();
     }
+  };
+
+  const handleEditServiceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !editingService) return;
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditingService({ ...editingService, image_url: reader.result as string });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleServiceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -925,6 +936,30 @@ export default function BusinessSettings() {
                   value={editingService.description}
                   onChange={(e) => setEditingService({ ...editingService, description: e.target.value })}
                 />
+              </div>
+              <div>
+                <Label htmlFor="edit-service-image">Foto do Serviço</Label>
+                <Input
+                  id="edit-service-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditServiceImageUpload}
+                  className="w-full"
+                />
+                {editingService.image_url && (
+                  <div className="relative mt-2">
+                    <img src={editingService.image_url} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={() => setEditingService({ ...editingService, image_url: null })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
