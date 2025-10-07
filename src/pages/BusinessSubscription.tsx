@@ -31,10 +31,19 @@ const BusinessSubscription = () => {
         body: { planType },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error from create-checkout:", error);
+        throw error;
+      }
+
+      console.log("Checkout data received:", data);
 
       if (data?.url) {
-        window.location.href = data.url;
+        console.log("Redirecting to:", data.url);
+        // Usar window.location.assign para garantir o redirecionamento
+        window.location.assign(data.url);
+      } else {
+        throw new Error("URL de checkout não foi retornada");
       }
     } catch (error: any) {
       console.error("Error creating checkout:", error);
