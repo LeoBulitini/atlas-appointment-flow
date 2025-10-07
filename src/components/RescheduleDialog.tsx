@@ -207,6 +207,13 @@ export function RescheduleDialog({
     setLoading(true);
 
     try {
+      console.log('[RescheduleDialog] Starting reschedule process', {
+        appointmentId,
+        selectedServices,
+        selectedDate: format(selectedDate, "yyyy-MM-dd"),
+        selectedTime
+      });
+
       const totalDuration = selectedServices.reduce((total, serviceId) => {
         const service = services.find(s => s.id === serviceId);
         return total + (service?.duration_minutes || 0);
@@ -215,11 +222,18 @@ export function RescheduleDialog({
       const startTime = parse(selectedTime, "HH:mm", new Date());
       const endTime = addMinutes(startTime, totalDuration);
 
-      // First, get existing services to check what needs to be updated
-      const { data: existingServices } = await supabase
+      // First, get existing services
+      const { data: existingServices, error: fetchError } = await supabase
         .from("appointment_services")
         .select("service_id")
         .eq("appointment_id", appointmentId);
+
+      if (fetchError) {
+        console.error('[RescheduleDialog] Error fetching existing services:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('[RescheduleDialog] Existing services:', existingServices);
 
       const existingServiceIds = existingServices?.map(s => s.service_id) || [];
 
@@ -228,6 +242,8 @@ export function RescheduleDialog({
         id => !selectedServices.includes(id)
       );
 
+      console.log('[RescheduleDialog] Services to delete:', servicesToDelete);
+
       if (servicesToDelete.length > 0) {
         const { error: deleteError } = await supabase
           .from("appointment_services")
@@ -235,13 +251,19 @@ export function RescheduleDialog({
           .eq("appointment_id", appointmentId)
           .in("service_id", servicesToDelete);
 
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error('[RescheduleDialog] Error deleting services:', deleteError);
+          throw deleteError;
+        }
+        console.log('[RescheduleDialog] Services deleted successfully');
       }
 
       // Insert only new services that don't already exist
       const servicesToInsert = selectedServices.filter(
         id => !existingServiceIds.includes(id)
       );
+
+      console.log('[RescheduleDialog] Services to insert:', servicesToInsert);
 
       if (servicesToInsert.length > 0) {
         const serviceInserts = servicesToInsert.map(serviceId => ({
@@ -253,21 +275,34 @@ export function RescheduleDialog({
           .from("appointment_services")
           .insert(serviceInserts);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('[RescheduleDialog] Error inserting services:', insertError);
+          throw insertError;
+        }
+        console.log('[RescheduleDialog] Services inserted successfully');
       }
 
-      // Finally, update appointment with new date/time/duration
+      // Update appointment with new date/time/duration
+      const appointmentUpdate = {
+        appointment_date: format(selectedDate, "yyyy-MM-dd"),
+        appointment_time: selectedTime,
+        end_time: format(endTime, "HH:mm:ss"),
+        service_id: selectedServices[0], // Keep for compatibility
+      };
+
+      console.log('[RescheduleDialog] Updating appointment:', appointmentUpdate);
+
       const { error: updateError } = await supabase
         .from("appointments")
-        .update({
-          appointment_date: format(selectedDate, "yyyy-MM-dd"),
-          appointment_time: selectedTime,
-          end_time: format(endTime, "HH:mm:ss"),
-          service_id: selectedServices[0], // Keep for compatibility
-        })
+        .update(appointmentUpdate)
         .eq("id", appointmentId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[RescheduleDialog] Error updating appointment:', updateError);
+        throw updateError;
+      }
+
+      console.log('[RescheduleDialog] Appointment updated successfully');
 
       // Send email notification (don't block on failure)
       supabase.functions
