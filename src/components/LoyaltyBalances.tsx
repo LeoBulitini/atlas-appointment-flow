@@ -220,6 +220,20 @@ export function LoyaltyBalances({ businessId, refreshKey }: LoyaltyBalancesProps
                   </div>
                 )}
 
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-sm text-muted-foreground">Resgates:</span>
+                  <span className="text-sm font-medium">{balance.redemptions_count || 0}x</span>
+                </div>
+
+                {balance.last_redemption_date && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Último resgate:</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(balance.last_redemption_date).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                )}
+
                 <Button
                   size="sm"
                   variant="outline"

@@ -64,6 +64,7 @@ export type Database = {
           service_id: string
           status: Database["public"]["Enums"]["appointment_status"] | null
           updated_at: string | null
+          used_loyalty_redemption: boolean | null
         }
         Insert: {
           appointment_date: string
@@ -78,6 +79,7 @@ export type Database = {
           service_id: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
           updated_at?: string | null
+          used_loyalty_redemption?: boolean | null
         }
         Update: {
           appointment_date?: string
@@ -92,6 +94,7 @@ export type Database = {
           service_id?: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
           updated_at?: string | null
+          used_loyalty_redemption?: boolean | null
         }
         Relationships: [
           {
@@ -417,7 +420,9 @@ export type Database = {
           client_id: string
           created_at: string | null
           id: string
+          last_redemption_date: string | null
           points: number | null
+          redemptions_count: number | null
           updated_at: string | null
           visits: number | null
         }
@@ -426,7 +431,9 @@ export type Database = {
           client_id: string
           created_at?: string | null
           id?: string
+          last_redemption_date?: string | null
           points?: number | null
+          redemptions_count?: number | null
           updated_at?: string | null
           visits?: number | null
         }
@@ -435,7 +442,9 @@ export type Database = {
           client_id?: string
           created_at?: string | null
           id?: string
+          last_redemption_date?: string | null
           points?: number | null
+          redemptions_count?: number | null
           updated_at?: string | null
           visits?: number | null
         }

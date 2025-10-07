@@ -191,12 +191,47 @@ const Booking = () => {
   const [showAllPortfolio, setShowAllPortfolio] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [specialHours, setSpecialHours] = useState<any[]>([]);
+  const [loyaltyProgram, setLoyaltyProgram] = useState<any>(null);
+  const [clientBalance, setClientBalance] = useState<any>(null);
+  const [useRedemption, setUseRedemption] = useState(false);
 
   useEffect(() => {
     if (businessId) {
       fetchBusinessAndServices();
+      fetchLoyaltyData();
     }
   }, [businessId]);
+
+  const fetchLoyaltyData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Buscar programa de fidelidade ativo
+      const { data: program } = await supabase
+        .from("loyalty_programs")
+        .select("*")
+        .eq("business_id", businessId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      setLoyaltyProgram(program);
+
+      if (program) {
+        // Buscar saldo do cliente
+        const { data: balance } = await supabase
+          .from("loyalty_balances")
+          .select("*")
+          .eq("business_id", businessId)
+          .eq("client_id", user.id)
+          .maybeSingle();
+
+        setClientBalance(balance);
+      }
+    } catch (error) {
+      console.error("Error fetching loyalty data:", error);
+    }
+  };
 
   // Auto-select services from URL query params when services are loaded
   useEffect(() => {
@@ -490,6 +525,27 @@ const Booking = () => {
     );
   };
 
+  const canRedeemReward = () => {
+    if (!loyaltyProgram || !clientBalance) return false;
+
+    if (loyaltyProgram.program_type === 'pontos') {
+      return clientBalance.points >= loyaltyProgram.points_required;
+    } else if (loyaltyProgram.program_type === 'visitas') {
+      return clientBalance.visits >= loyaltyProgram.visits_required;
+    }
+    return false;
+  };
+
+  const getEligibleRewardServices = () => {
+    if (!loyaltyProgram?.reward_services || loyaltyProgram.reward_services.length === 0) {
+      return services.map(s => s.name);
+    }
+    
+    return services
+      .filter(s => loyaltyProgram.reward_services.includes(s.id))
+      .map(s => s.name);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -539,9 +595,8 @@ const Booking = () => {
         throw rpcError;
       }
 
-      // Check if appointment was successfully created
       const resultData = result as { success: boolean; error?: string; message?: string; appointment_id?: string };
-      
+
       if (!resultData || !resultData.success) {
         if (resultData?.error === 'conflict') {
           toast({
@@ -549,7 +604,6 @@ const Booking = () => {
             description: "Este horário acabou de ser reservado. Por favor, escolha outro horário.",
             variant: "destructive",
           });
-          // Regenerate available slots
           generateAvailableSlots();
         } else {
           toast({
@@ -559,6 +613,18 @@ const Booking = () => {
           });
         }
         return;
+      }
+
+      // Se usar resgate, atualizar o campo na appointment
+      if (useRedemption) {
+        const { error: updateError } = await supabase
+          .from("appointments")
+          .update({ used_loyalty_redemption: true })
+          .eq("id", resultData.appointment_id);
+
+        if (updateError) {
+          console.error("Error updating redemption flag:", updateError);
+        }
       }
 
       // Insert all selected services first
@@ -907,11 +973,39 @@ const Booking = () => {
                         ))
                       )}
                     </div>
-                    {selectedServices.length > 0 && (
+                     {selectedServices.length > 0 && (
                       <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
                         <p className="font-semibold text-foreground">Total: R$ {totalPrice.toFixed(2)}</p>
                         <p className="text-sm text-muted-foreground">Duração: {totalDuration} minutos</p>
                       </div>
+                    )}
+
+                    {/* Loyalty Redemption Option */}
+                    {loyaltyProgram && clientBalance && canRedeemReward() && (
+                      <Card className="border-2 border-primary">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={useRedemption}
+                              onCheckedChange={(checked) => setUseRedemption(checked as boolean)}
+                            />
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-primary">🎁 Usar Recompensa de Fidelidade</h4>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {loyaltyProgram.program_type === 'pontos' 
+                                  ? `Você tem ${clientBalance.points} pontos! Resgate ${loyaltyProgram.points_required} pontos neste agendamento.`
+                                  : `Você tem ${clientBalance.visits} visitas! Resgate ${loyaltyProgram.visits_required} visitas neste agendamento.`
+                                }
+                              </p>
+                              {getEligibleRewardServices().length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Serviços disponíveis para resgate: {getEligibleRewardServices().join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )}
                   </div>
 
