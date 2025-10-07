@@ -101,7 +101,30 @@ const ClientDashboard = () => {
         .order("appointment_date", { ascending: false });
 
       if (error) throw error;
-      setAppointments(data || []);
+      
+      // Ordenar por status: pendentes, confirmados, concluídos e cancelados
+      const sortedData = (data || []).sort((a, b) => {
+        const statusPriority: Record<string, number> = {
+          pending: 1,
+          confirmed: 2,
+          completed: 3,
+          cancelled: 4,
+        };
+        
+        const priorityA = statusPriority[a.status] || 5;
+        const priorityB = statusPriority[b.status] || 5;
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        
+        // Se tiverem o mesmo status, ordenar por data e horário
+        const dateCompare = b.appointment_date.localeCompare(a.appointment_date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.appointment_time.localeCompare(b.appointment_time);
+      });
+      
+      setAppointments(sortedData);
     } catch (error) {
       console.error("Error fetching appointments:", error);
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar seus agendamentos." });

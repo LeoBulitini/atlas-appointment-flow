@@ -382,10 +382,32 @@ const BusinessDashboard = () => {
       return a.appointment_time.localeCompare(b.appointment_time);
     });
 
-  const filteredAppointments = appointments.filter((app) => {
-    const appDate = parseISO(app.appointment_date);
-    return isWithinInterval(appDate, { start: dateRange.from, end: dateRange.to });
-  });
+  const filteredAppointments = appointments
+    .filter((app) => {
+      const appDate = parseISO(app.appointment_date);
+      return isWithinInterval(appDate, { start: dateRange.from, end: dateRange.to });
+    })
+    .sort((a, b) => {
+      // Definir prioridade: pendentes primeiro, depois confirmados, depois concluídos e cancelados
+      const statusPriority: Record<string, number> = {
+        pending: 1,
+        confirmed: 2,
+        completed: 3,
+        cancelled: 4,
+      };
+      
+      const priorityA = statusPriority[a.status] || 5;
+      const priorityB = statusPriority[b.status] || 5;
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // Se tiverem o mesmo status, ordenar por data e horário
+      const dateCompare = a.appointment_date.localeCompare(b.appointment_date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.appointment_time.localeCompare(b.appointment_time);
+    });
 
   const completedAppointments = appointments.filter((app) => app.status === "completed");
   const totalRevenue = completedAppointments.reduce((sum, app) => {
