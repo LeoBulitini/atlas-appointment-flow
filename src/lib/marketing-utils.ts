@@ -39,31 +39,40 @@ export async function getAvailableSlots(
       .eq("id", businessId)
       .single();
 
-    if (!business?.opening_hours) return [];
+    if (!business?.opening_hours) {
+      console.log("No opening hours configured");
+      return [];
+    }
 
     const openingHours = business.opening_hours as any;
-    const today = new Date();
+    const now = new Date();
     const slots: AvailableSlot[] = [];
 
     // Buscar todos os agendamentos confirmados/pendentes no período
     const { data: appointments } = await supabase
       .from("appointments")
-      .select("appointment_date, appointment_time, end_time")
+      .select("appointment_date, appointment_time, end_time, services!inner(duration_minutes)")
       .eq("business_id", businessId)
       .in("status", ["pending", "confirmed"])
-      .gte("appointment_date", format(today, "yyyy-MM-dd"))
-      .lte("appointment_date", format(addDays(today, days), "yyyy-MM-dd"));
+      .gte("appointment_date", format(now, "yyyy-MM-dd"))
+      .lte("appointment_date", format(addDays(now, days), "yyyy-MM-dd"));
+
+    console.log(`Found ${appointments?.length || 0} appointments`);
 
     // Mapear dias da semana
     const weekDays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
     // Para cada dia
     for (let i = 0; i < days; i++) {
-      const currentDate = addDays(today, i);
+      const currentDate = addDays(startOfDay(now), i);
+      const isToday = i === 0;
       const dayOfWeek = weekDays[currentDate.getDay()];
       const dayHours = openingHours[dayOfWeek];
 
-      if (!dayHours || dayHours.closed) continue;
+      if (!dayHours || dayHours.closed) {
+        console.log(`${dayOfWeek} is closed`);
+        continue;
+      }
 
       // Gerar slots de 30 em 30 minutos
       const [openHour, openMinute] = dayHours.open.split(":").map(Number);
@@ -72,19 +81,38 @@ export async function getAvailableSlots(
       let currentTime = openHour * 60 + openMinute; // em minutos
       const closeTime = closeHour * 60 + closeMinute;
 
-      while (currentTime < closeTime) {
+      // Se for hoje, começar do próximo horário disponível (mínimo 30 minutos a partir de agora)
+      if (isToday) {
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const minTime = currentHour * 60 + currentMinute + 30; // 30 min de antecedência
+        currentTime = Math.max(currentTime, Math.ceil(minTime / 30) * 30);
+      }
+
+      let slotsForDay = 0;
+      while (currentTime < closeTime && slots.length < 20) {
         const hour = Math.floor(currentTime / 60);
         const minute = currentTime % 60;
         const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:00`;
 
         // Verificar se este horário está ocupado
-        const isOccupied = appointments?.some((apt) => {
+        const isOccupied = appointments?.some((apt: any) => {
           if (apt.appointment_date !== format(currentDate, "yyyy-MM-dd")) return false;
           
           const aptStart = apt.appointment_time;
-          const aptEnd = apt.end_time;
+          let aptEnd = apt.end_time;
           
-          return timeString >= aptStart && timeString < aptEnd;
+          // Se end_time não existir, calcular baseado na duração do serviço
+          if (!aptEnd && apt.services?.duration_minutes) {
+            const [startHour, startMinute] = aptStart.split(":").map(Number);
+            const startMinutes = startHour * 60 + startMinute;
+            const endMinutes = startMinutes + apt.services.duration_minutes;
+            const endHour = Math.floor(endMinutes / 60);
+            const endMinute = endMinutes % 60;
+            aptEnd = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}:00`;
+          }
+          
+          return aptEnd && timeString >= aptStart && timeString < aptEnd;
         });
 
         if (!isOccupied) {
@@ -94,12 +122,16 @@ export async function getAvailableSlots(
             displayDate: format(currentDate, "dd/MM", { locale: ptBR }),
             displayTime: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
           });
+          slotsForDay++;
         }
 
         currentTime += 30; // Próximo slot (30 minutos)
       }
+
+      console.log(`Found ${slotsForDay} available slots for ${dayOfWeek}`);
     }
 
+    console.log(`Total available slots: ${slots.length}`);
     return slots.slice(0, 20); // Limitar a 20 slots
   } catch (error) {
     console.error("Error getting available slots:", error);
