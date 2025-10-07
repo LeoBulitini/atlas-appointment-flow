@@ -40,7 +40,7 @@ export function RescheduleDialog({
 }: RescheduleDialogProps) {
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedServices, setSelectedServices] = useState<string[]>([currentServiceId]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date(currentDate));
   const [selectedTime, setSelectedTime] = useState(currentTime);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -50,8 +50,9 @@ export function RescheduleDialog({
     if (open) {
       fetchServices();
       fetchBusiness();
+      fetchAppointmentServices();
     }
-  }, [open, businessId]);
+  }, [open, businessId, appointmentId]);
 
   useEffect(() => {
     if (selectedDate && business) {
@@ -75,6 +76,25 @@ export function RescheduleDialog({
       .eq("id", businessId)
       .single();
     setBusiness(data);
+  };
+
+  const fetchAppointmentServices = async () => {
+    const { data, error } = await supabase
+      .from("appointment_services")
+      .select("service_id")
+      .eq("appointment_id", appointmentId);
+
+    if (error) {
+      console.error("[RescheduleDialog] Error fetching appointment services:", error);
+      setSelectedServices([currentServiceId]);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      setSelectedServices(data.map(s => s.service_id));
+    } else {
+      setSelectedServices([currentServiceId]);
+    }
   };
 
   const generateAvailableSlots = async () => {
