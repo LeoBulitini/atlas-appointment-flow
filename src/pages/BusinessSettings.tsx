@@ -459,11 +459,11 @@ export default function BusinessSettings() {
                     <div key={service.id} className="flex flex-col gap-3 p-4 border rounded-lg">
                       <div className="flex items-start gap-3">
                         {service.image_url && (
-                          <img src={service.image_url} alt={service.name} className="w-20 h-20 object-cover rounded-lg" />
+                          <img src={service.image_url} alt={service.name} className="w-20 h-20 object-cover rounded-lg flex-shrink-0" />
                         )}
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <h4 className="font-medium">{service.name}</h4>
-                          <p className="text-sm text-muted-foreground">{service.description}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
                           <p className="text-sm mt-1">R$ {service.price} - {service.duration_minutes} min</p>
                           <div className="flex items-center gap-2 mt-2">
                             <Switch
@@ -473,10 +473,24 @@ export default function BusinessSettings() {
                             <Label className="text-xs">{service.is_public ? "Público" : "Privado"}</Label>
                           </div>
                         </div>
-                        <Button variant="destructive" size="sm" className="min-h-11" onClick={() => handleDeleteService(service.id)}>
-                          <Trash2 className="h-4 w-4" />
+                        {/* Desktop: botões ao lado */}
+                        <div className="hidden sm:flex gap-2">
+                          <Button variant="destructive" size="sm" className="min-h-11" onClick={() => handleDeleteService(service.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" className="min-h-11" onClick={() => openEditServiceDialog(service)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
+                          </Button>
+                        </div>
+                      </div>
+                      {/* Mobile: botões embaixo */}
+                      <div className="flex sm:hidden gap-2">
+                        <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDeleteService(service.id)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
                         </Button>
-                        <Button variant="outline" size="sm" className="min-h-11" onClick={() => openEditServiceDialog(service)}>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => openEditServiceDialog(service)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Editar
                         </Button>
