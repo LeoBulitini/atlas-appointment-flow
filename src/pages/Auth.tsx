@@ -259,6 +259,7 @@ const Auth = () => {
                     onChange={(e) => setBirthDate(e.target.value)}
                     required
                     max={new Date().toISOString().split('T')[0]}
+                    className="w-full"
                   />
                 </div>
                 
