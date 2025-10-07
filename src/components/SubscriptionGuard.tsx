@@ -44,12 +44,9 @@ const SubscriptionGuard = ({ children, requiredPlan }: SubscriptionGuardProps) =
     }
   };
 
+  // Don't block rendering while checking subscription
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <>{children}</>;
   }
 
   // Check if trying to access professional-only features with standard plan
