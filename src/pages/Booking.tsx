@@ -147,6 +147,7 @@ interface Service {
   price: number;
   duration_minutes: number;
   image_url: string | null;
+  is_active: boolean;
 }
 
 interface Business {
@@ -175,10 +176,6 @@ const Booking = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Read pre-selected service IDs from URL
-  const searchParams = new URLSearchParams(window.location.search);
-  const preselectedServiceIds = searchParams.get('services')?.split(',').filter(Boolean) || [];
-  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
@@ -199,6 +196,30 @@ const Booking = () => {
       fetchBusinessAndServices();
     }
   }, [businessId]);
+
+  // Auto-select services from URL query params when services are loaded
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const preselectedServiceIds = searchParams.get('services')?.split(',').filter(Boolean) || [];
+    
+    console.log('[Booking] Preselected service IDs from URL:', preselectedServiceIds);
+    
+    if (preselectedServiceIds.length > 0 && services.length > 0 && selectedServices.length === 0) {
+      const validServiceIds = preselectedServiceIds.filter(id => 
+        services.some(service => service.id === id)
+      );
+      
+      console.log('[Booking] Valid service IDs to select:', validServiceIds);
+      
+      if (validServiceIds.length > 0) {
+        setSelectedServices(validServiceIds);
+        toast({
+          title: "Serviços pré-selecionados",
+          description: `${validServiceIds.length} serviço(s) do agendamento anterior foram selecionados automaticamente.`,
+        });
+      }
+    }
+  }, [services]);
 
   useEffect(() => {
     if (selectedDate && business) {
@@ -255,16 +276,6 @@ const Booking = () => {
 
       if (servicesError) throw servicesError;
       setServices(servicesData || []);
-
-      // Auto-select services if provided in URL (e.g., from "Agendar novamente")
-      if (preselectedServiceIds.length > 0 && servicesData) {
-        const validServiceIds = preselectedServiceIds.filter(id => 
-          servicesData.some(service => service.id === id && service.is_active)
-        );
-        if (validServiceIds.length > 0) {
-          setSelectedServices(validServiceIds);
-        }
-      }
 
       const { data: portfolioData } = await supabase
         .from("business_portfolio")
