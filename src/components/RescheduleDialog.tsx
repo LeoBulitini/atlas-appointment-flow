@@ -48,11 +48,16 @@ export function RescheduleDialog({
 
   useEffect(() => {
     if (open) {
+      // Reset state when opening dialog
+      setSelectedDate(new Date(currentDate));
+      setSelectedTime(currentTime);
+      setAvailableSlots([]);
+      
       fetchServices();
       fetchBusiness();
       fetchAppointmentServices();
     }
-  }, [open, businessId, appointmentId]);
+  }, [open, businessId, appointmentId, currentDate, currentTime]);
 
   useEffect(() => {
     if (selectedDate && business) {
@@ -333,8 +338,16 @@ export function RescheduleDialog({
       console.log("[RescheduleDialog] Triggering data refresh...");
       await onRescheduleSuccess();
       
+      console.log("[RescheduleDialog] Data refreshed, closing dialog...");
+      
+      // Reset state before closing
+      setSelectedServices([]);
+      setSelectedDate(undefined);
+      setSelectedTime('');
+      setAvailableSlots([]);
+      
       // Small delay to ensure UI updates
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       onOpenChange(false);
     } catch (error: any) {

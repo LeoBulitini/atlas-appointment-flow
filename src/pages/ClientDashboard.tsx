@@ -363,13 +363,23 @@ const ClientDashboard = () => {
           />
           <RescheduleDialog
             open={rescheduleDialogOpen}
-            onOpenChange={setRescheduleDialogOpen}
+            onOpenChange={(open) => {
+              setRescheduleDialogOpen(open);
+              if (!open) {
+                // Clear selected appointment when closing to force fresh data on reopen
+                setSelectedAppointment(null);
+              }
+            }}
             appointmentId={selectedAppointment.id}
             businessId={selectedAppointment.business_id}
             currentDate={selectedAppointment.appointment_date}
             currentTime={selectedAppointment.appointment_time}
             currentServiceId={selectedAppointment.service_id}
-            onRescheduleSuccess={fetchAppointments}
+            onRescheduleSuccess={async () => {
+              console.log("[ClientDashboard] Refreshing appointments after reschedule");
+              await fetchAppointments();
+              console.log("[ClientDashboard] Appointments refreshed successfully");
+            }}
           />
         </>
       )}
