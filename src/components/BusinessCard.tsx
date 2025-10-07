@@ -57,23 +57,23 @@ const BusinessCard = ({
           <h3 className="text-lg font-semibold mb-1 group-hover:text-primary transition-smooth">
             {name}
           </h3>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
             <Badge variant="secondary">{category}</Badge>
             <span>{priceRange}</span>
+            {distance !== undefined && (
+              <div className="flex items-center gap-1 text-primary">
+                <Navigation className="h-3 w-3" />
+                <span className="font-medium">{formatDistance(distance)}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="space-y-2 mb-4">
+        <div className="mb-4">
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <span className="line-clamp-1">{address}</span>
           </div>
-          {distance !== undefined && (
-            <div className="flex items-center gap-2 text-sm text-primary">
-              <Navigation className="h-4 w-4" />
-              <span className="font-medium">{formatDistance(distance)}</span>
-            </div>
-          )}
         </div>
 
         <Button className="w-full" variant="default">

@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power, RefreshCw, Megaphone, Settings, LogOut, Gift } from "lucide-react";
+import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power, RefreshCw, Megaphone, Settings, LogOut, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -478,7 +478,7 @@ const BusinessDashboard = () => {
               </span>
               {appointment.used_loyalty_redemption && (
                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                  <Gift className="h-3 w-3 mr-1" />
+                  <Star className="h-3 w-3 mr-1" />
                   Recompensa
                 </Badge>
               )}
@@ -561,7 +561,10 @@ const BusinessDashboard = () => {
             )}
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">{business?.name || "Dashboard"}</h1>
-              <p className="text-muted-foreground">Gerencie seu negócio</p>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Eye className="h-4 w-4" />
+                <span className="text-sm">{business?.view_count || 0}</span>
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -649,7 +652,7 @@ const BusinessDashboard = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
@@ -669,19 +672,6 @@ const BusinessDashboard = () => {
               <div className="text-2xl font-bold">
                 {appointments.filter((app) => app.status === "pending").length}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Visualizações</CardTitle>
-              <Gift className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{business?.view_count || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Acessos do Explorar
-              </p>
             </CardContent>
           </Card>
 

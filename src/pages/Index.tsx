@@ -96,10 +96,6 @@ const Index = () => {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           });
-          toast({
-            title: "Localização obtida!",
-            description: "Mostrando empresas próximas a você",
-          });
         },
         (error) => {
           console.log("Geolocation denied or error:", error);
