@@ -18,6 +18,7 @@ import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { maskPhoneInput } from "@/lib/phone-utils";
 
 interface Client {
   id: string;
@@ -440,8 +441,12 @@ export default function BusinessClients() {
                   <Input
                     id="client-phone"
                     value={newClientData.phone}
-                    onChange={(e) => setNewClientData({ ...newClientData, phone: e.target.value })}
-                    placeholder="(00) 00000-0000"
+                    onChange={(e) => {
+                      const formatted = maskPhoneInput(e.target.value);
+                      setNewClientData({ ...newClientData, phone: formatted });
+                    }}
+                    placeholder="+55 (00) 00000-0000"
+                    maxLength={19}
                   />
                 </div>
                 <div className="space-y-2">
