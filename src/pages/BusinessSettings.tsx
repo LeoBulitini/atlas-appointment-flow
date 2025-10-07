@@ -105,7 +105,21 @@ export default function BusinessSettings() {
       setBusiness(businessData);
       const hours = businessData.opening_hours as OpeningHours | null;
       setOpeningHours(hours || getDefaultOpeningHours());
-      setPaymentMethods(businessData.payment_methods || []);
+      
+      // Filtrar valores em inglês antigos e manter apenas os selecionados em português
+      const methods = businessData.payment_methods || [];
+      const validMethods = methods.filter((m: string) => 
+        ["Dinheiro", "Pix", "Cartão de Crédito", "Cartão de Débito"].includes(m)
+      );
+      setPaymentMethods(validMethods);
+      
+      // Se houver valores antigos em inglês, atualizar o banco automaticamente
+      if (methods.length > 0 && validMethods.length === 0) {
+        await supabase
+          .from("businesses")
+          .update({ payment_methods: [] })
+          .eq("id", businessData.id);
+      }
     }
 
     const { data: servicesData } = await supabase
