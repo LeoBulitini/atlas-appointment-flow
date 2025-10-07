@@ -365,8 +365,13 @@ const Booking = () => {
 
     // Generate 15-minute slots
     const slots: string[] = [];
-    const openTime = parse(daySchedule.openTime, "HH:mm", new Date());
-    const closeTime = parse(daySchedule.closeTime, "HH:mm", new Date());
+    
+    // Detect format for open and close time (handle both HH:mm and HH:mm:ss)
+    const openTimeFormat = daySchedule.openTime.includes(':') && daySchedule.openTime.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
+    const closeTimeFormat = daySchedule.closeTime.includes(':') && daySchedule.closeTime.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
+    
+    const openTime = parse(daySchedule.openTime, openTimeFormat, new Date());
+    const closeTime = parse(daySchedule.closeTime, closeTimeFormat, new Date());
     let currentSlot = openTime;
 
     while (currentSlot < closeTime) {
@@ -374,8 +379,10 @@ const Booking = () => {
       
       // Check if slot is in break time
       const isBreak = daySchedule.breaks?.some((br: any) => {
-        const breakStart = parse(br.start, "HH:mm", new Date());
-        const breakEnd = parse(br.end, "HH:mm", new Date());
+        const breakStartFormat = br.start.includes(':') && br.start.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
+        const breakEndFormat = br.end.includes(':') && br.end.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
+        const breakStart = parse(br.start, breakStartFormat, new Date());
+        const breakEnd = parse(br.end, breakEndFormat, new Date());
         return currentSlot >= breakStart && currentSlot < breakEnd;
       });
 
@@ -403,8 +410,10 @@ const Booking = () => {
           
           // Check if this slot is in break time
           const isInBreak = daySchedule.breaks?.some((br: any) => {
-            const breakStart = parse(br.start, "HH:mm", new Date());
-            const breakEnd = parse(br.end, "HH:mm", new Date());
+            const breakStartFormat = br.start.includes(':') && br.start.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
+            const breakEndFormat = br.end.includes(':') && br.end.split(':').length === 3 ? "HH:mm:ss" : "HH:mm";
+            const breakStart = parse(br.start, breakStartFormat, new Date());
+            const breakEnd = parse(br.end, breakEndFormat, new Date());
             return checkSlot >= breakStart && checkSlot < breakEnd;
           });
           
