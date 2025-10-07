@@ -5,6 +5,8 @@ import Header from "@/components/Header";
 import SearchBar from "@/components/SearchBar";
 import BusinessCard from "@/components/BusinessCard";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { calculateDistance } from "@/lib/distance-utils";
 import heroBackgroundImg from "@/assets/hero-background.jpg";
 import salonBeautyImg from "@/assets/salon-beauty.jpg";
 import barbershopImg from "@/assets/barbershop.jpg";
@@ -21,14 +23,18 @@ interface Business {
   price_range: string;
   is_active: boolean;
   logo_url?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Check if business user is logged in and redirect to dashboard
   useEffect(() => {
@@ -59,6 +65,7 @@ const Index = () => {
   }, [navigate]);
 
   useEffect(() => {
+    requestUserLocation();
     fetchBusinesses();
 
     const channel = supabase
@@ -80,6 +87,26 @@ const Index = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const requestUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          toast({
+            title: "Localização obtida!",
+            description: "Mostrando empresas próximas a você",
+          });
+        },
+        (error) => {
+          console.log("Geolocation denied or error:", error);
+        }
+      );
+    }
+  };
 
   const fetchBusinesses = async () => {
     try {
@@ -125,6 +152,19 @@ const Index = () => {
     // Filter by category
     if (category && category !== "all") {
       filtered = filtered.filter((b) => b.category === category);
+    }
+
+    // Sort by proximity if user location is available
+    if (userLocation) {
+      filtered = filtered.sort((a, b) => {
+        const distA = a.latitude && a.longitude
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude)
+          : Infinity;
+        const distB = b.latitude && b.longitude
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude)
+          : Infinity;
+        return distA - distB;
+      });
     }
 
     setFilteredBusinesses(filtered);
@@ -201,17 +241,29 @@ const Index = () => {
                 </p>
               </div>
             ) : (
-              filteredBusinesses.map((business) => (
-                <BusinessCard
-                  key={business.id}
-                  id={business.id}
-                  name={business.name}
-                  category={business.category}
-                  address={`${business.address}, ${business.city} - ${business.state}`}
-                  image={business.logo_url || categoryImages[business.category] || salonBeautyImg}
-                  priceRange={business.price_range}
-                />
-              ))
+              filteredBusinesses.map((business) => {
+                const distance = userLocation && business.latitude && business.longitude
+                  ? calculateDistance(
+                      userLocation.latitude,
+                      userLocation.longitude,
+                      business.latitude,
+                      business.longitude
+                    )
+                  : undefined;
+
+                return (
+                  <BusinessCard
+                    key={business.id}
+                    id={business.id}
+                    name={business.name}
+                    category={business.category}
+                    address={`${business.address}, ${business.city} - ${business.state}`}
+                    image={business.logo_url || categoryImages[business.category] || salonBeautyImg}
+                    priceRange={business.price_range}
+                    distance={distance}
+                  />
+                );
+              })
             )}
           </div>
         </div>

@@ -259,7 +259,9 @@ export type Database = {
           email: string | null
           id: string
           is_active: boolean | null
+          latitude: number | null
           logo_url: string | null
+          longitude: number | null
           name: string
           opening_hours: Json | null
           owner_id: string
@@ -269,6 +271,7 @@ export type Database = {
           price_range: string | null
           state: string
           updated_at: string | null
+          view_count: number
         }
         Insert: {
           address: string
@@ -281,7 +284,9 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean | null
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name: string
           opening_hours?: Json | null
           owner_id: string
@@ -291,6 +296,7 @@ export type Database = {
           price_range?: string | null
           state: string
           updated_at?: string | null
+          view_count?: number
         }
         Update: {
           address?: string
@@ -303,7 +309,9 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean | null
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name?: string
           opening_hours?: Json | null
           owner_id?: string
@@ -313,6 +321,7 @@ export type Database = {
           price_range?: string | null
           state?: string
           updated_at?: string | null
+          view_count?: number
         }
         Relationships: [
           {
@@ -1057,6 +1066,10 @@ export type Database = {
       gbtreekey8_out: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      increment_business_views: {
+        Args: { business_uuid: string }
+        Returns: undefined
       }
     }
     Enums: {

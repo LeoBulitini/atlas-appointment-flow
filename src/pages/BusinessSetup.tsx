@@ -28,6 +28,8 @@ const BusinessSetup = () => {
     phone: "",
     email: "",
     price_range: "$$",
+    latitude: "",
+    longitude: "",
   });
 
   useEffect(() => {
@@ -60,6 +62,8 @@ const BusinessSetup = () => {
           phone: data.phone || "",
           email: data.email || "",
           price_range: data.price_range || "$$",
+          latitude: data.latitude?.toString() || "",
+          longitude: data.longitude?.toString() || "",
         });
       }
     } catch (error: any) {
@@ -84,6 +88,8 @@ const BusinessSetup = () => {
 
       const businessData = {
         ...formData,
+        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         owner_id: user.id,
       };
 
@@ -281,6 +287,38 @@ const BusinessSetup = () => {
                     <SelectItem value="$$$$">$$$$ - Premium</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="latitude">Latitude (opcional)</Label>
+                  <Input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    value={formData.latitude}
+                    onChange={(e) => handleChange("latitude", e.target.value)}
+                    placeholder="-23.5505"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Para aparecer em buscas por proximidade
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="longitude">Longitude (opcional)</Label>
+                  <Input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    value={formData.longitude}
+                    onChange={(e) => handleChange("longitude", e.target.value)}
+                    placeholder="-46.6333"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use Google Maps para obter coordenadas
+                  </p>
+                </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>

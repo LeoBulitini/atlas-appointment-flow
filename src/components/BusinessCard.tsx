@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin } from "lucide-react";
+import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistance } from "@/lib/distance-utils";
 
 interface BusinessCardProps {
   id: string;
@@ -11,6 +13,7 @@ interface BusinessCardProps {
   address: string;
   image: string;
   priceRange: string;
+  distance?: number;
 }
 
 const BusinessCard = ({
@@ -20,12 +23,26 @@ const BusinessCard = ({
   address,
   image,
   priceRange,
+  distance,
 }: BusinessCardProps) => {
   const navigate = useNavigate();
+
+  const handleCardClick = async () => {
+    // Track view
+    try {
+      await supabase.rpc("increment_business_views", { business_uuid: id });
+    } catch (error) {
+      console.error("Error tracking view:", error);
+    }
+
+    // Navigate to booking page
+    navigate(`/booking/${id}`, { state: { from: "explore" } });
+  };
+
   return (
     <Card 
       className="group overflow-hidden transition-smooth hover:shadow-elegant cursor-pointer"
-      onClick={() => navigate(`/booking/${id}`)}
+      onClick={handleCardClick}
     >
       <div className="relative h-48 overflow-hidden">
         <img
@@ -46,9 +63,17 @@ const BusinessCard = ({
           </div>
         </div>
 
-        <div className="flex items-start gap-2 mb-4 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          <span className="line-clamp-1">{address}</span>
+        <div className="space-y-2 mb-4">
+          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span className="line-clamp-1">{address}</span>
+          </div>
+          {distance !== undefined && (
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <Navigation className="h-4 w-4" />
+              <span className="font-medium">{formatDistance(distance)}</span>
+            </div>
+          )}
         </div>
 
         <Button className="w-full" variant="default">

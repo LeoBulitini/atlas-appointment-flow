@@ -649,7 +649,7 @@ const BusinessDashboard = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Agendamentos Hoje</CardTitle>
@@ -669,6 +669,19 @@ const BusinessDashboard = () => {
               <div className="text-2xl font-bold">
                 {appointments.filter((app) => app.status === "pending").length}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Visualizações</CardTitle>
+              <Gift className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{business?.view_count || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Acessos do Explorar
+              </p>
             </CardContent>
           </Card>
 
