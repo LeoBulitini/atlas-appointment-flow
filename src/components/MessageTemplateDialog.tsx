@@ -146,45 +146,36 @@ export function MessageTemplateDialog({
         return slot.date === today;
       });
 
-      if (todaySlots.length >= 3) {
+      if (todaySlots.length > 0) {
+        const horariosList = todaySlots.map(slot => `🕐 ${slot.displayTime}`).join("\n");
         return {
           "[X]": todaySlots.length.toString(),
-          "[HORÁRIO 1]": todaySlots[0].displayTime,
-          "[HORÁRIO 2]": todaySlots[1].displayTime,
-          "[HORÁRIO 3]": todaySlots[2].displayTime,
+          "[HORÁRIOS]": horariosList,
         };
-      } else if (todaySlots.length > 0) {
-        const data: Record<string, string> = {
-          "[X]": todaySlots.length.toString(),
-        };
-        todaySlots.forEach((slot, index) => {
-          data[`[HORÁRIO ${index + 1}]`] = slot.displayTime;
-        });
-        return data;
       }
     }
 
     if (template.id === "horarios-semana") {
       // Agrupar slots por dia da semana
       const slotsByDay: Record<string, string[]> = {};
-      const weekDays = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
+      const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
       
       availableSlots.forEach((slot) => {
         const date = new Date(slot.date);
         const dayOfWeek = date.getDay();
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-          const dayName = weekDays[dayOfWeek - 1];
-          if (!slotsByDay[dayName]) slotsByDay[dayName] = [];
-          if (slotsByDay[dayName].length < 3) {
-            slotsByDay[dayName].push(slot.displayTime);
-          }
-        }
+        const dayName = weekDays[dayOfWeek];
+        const displayDay = `${dayName} (${slot.displayDate})`;
+        
+        if (!slotsByDay[displayDay]) slotsByDay[displayDay] = [];
+        slotsByDay[displayDay].push(slot.displayTime);
       });
 
+      const horariosFormatted = Object.entries(slotsByDay)
+        .map(([day, times]) => `${day}:\n${times.map(t => `  🕐 ${t}`).join("\n")}`)
+        .join("\n\n");
+
       return {
-        "[HORÁRIOS]": Object.entries(slotsByDay)
-          .map(([day, times]) => `${day}: ${times.join(", ")}`)
-          .join("\n"),
+        "[HORÁRIOS]": horariosFormatted,
       };
     }
 

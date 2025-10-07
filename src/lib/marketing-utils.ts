@@ -100,7 +100,7 @@ export async function getAvailableSlots(
       }
 
       let slotsForDay = 0;
-      while (currentTime < closeTime && slots.length < 20) {
+      while (currentTime < closeTime) {
         const hour = Math.floor(currentTime / 60);
         const minute = currentTime % 60;
         const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:00`;
@@ -142,7 +142,7 @@ export async function getAvailableSlots(
     }
 
     console.log(`Total available slots: ${slots.length}`);
-    return slots.slice(0, 20); // Limitar a 20 slots
+    return slots; // Retornar todos os slots disponíveis
   } catch (error) {
     console.error("Error getting available slots:", error);
     return [];

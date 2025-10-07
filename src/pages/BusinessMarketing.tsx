@@ -101,12 +101,10 @@ Me chama aqui mesmo pra gente combinar! 💙`,
 
 Olha só, ainda tenho [X] horários disponíveis HOJE:
 
-🕐 [HORÁRIO 1]
-🕑 [HORÁRIO 2]
-🕒 [HORÁRIO 3]
+[HORÁRIOS]
 
 Aproveita! Me chama rápido pra garantir o seu! 😉`,
-      fields: ["[X]", "[HORÁRIO 1]", "[HORÁRIO 2]", "[HORÁRIO 3]"],
+      fields: ["[X]", "[HORÁRIOS]"],
     },
     {
       id: "horarios-semana",
