@@ -259,7 +259,7 @@ const Auth = () => {
                     onChange={(e) => setBirthDate(e.target.value)}
                     required
                     max={new Date().toISOString().split('T')[0]}
-                    className="text-sm"
+                    className="text-sm [&::-webkit-calendar-picker-indicator]:ml-auto"
                   />
                 </div>
                 
