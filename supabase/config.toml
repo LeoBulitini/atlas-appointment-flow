@@ -18,6 +18,15 @@ verify_jwt = false
 [functions.send-birthday-emails]
 verify_jwt = false
 
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.check-subscription]
+verify_jwt = true
+
+[functions.handle-stripe-webhook]
+verify_jwt = false
+
 [edge-runtime]
 policy = "per_worker"
 

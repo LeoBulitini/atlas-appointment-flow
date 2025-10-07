@@ -270,6 +270,7 @@ export type Database = {
           postal_code: string | null
           price_range: string | null
           state: string
+          subscription_id: string | null
           updated_at: string | null
           view_count: number
         }
@@ -295,6 +296,7 @@ export type Database = {
           postal_code?: string | null
           price_range?: string | null
           state: string
+          subscription_id?: string | null
           updated_at?: string | null
           view_count?: number
         }
@@ -320,6 +322,7 @@ export type Database = {
           postal_code?: string | null
           price_range?: string | null
           state?: string
+          subscription_id?: string | null
           updated_at?: string | null
           view_count?: number
         }
@@ -329,6 +332,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "businesses_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -813,6 +823,56 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          business_id: string
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trial_end_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_end_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_end_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -821,6 +881,10 @@ export type Database = {
       check_birthdays: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      check_subscription_access: {
+        Args: { p_business_id: string }
+        Returns: Json
       }
       complete_past_appointments: {
         Args: Record<PropertyKey, never>
@@ -1081,6 +1145,13 @@ export type Database = {
     }
     Enums: {
       appointment_status: "pending" | "confirmed" | "completed" | "cancelled"
+      plan_type: "standard" | "professional"
+      subscription_status:
+        | "trialing"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "incomplete"
       user_type: "client" | "business"
     }
     CompositeTypes: {
@@ -1210,6 +1281,14 @@ export const Constants = {
   public: {
     Enums: {
       appointment_status: ["pending", "confirmed", "completed", "cancelled"],
+      plan_type: ["standard", "professional"],
+      subscription_status: [
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "incomplete",
+      ],
       user_type: ["client", "business"],
     },
   },
