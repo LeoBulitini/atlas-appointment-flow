@@ -15,12 +15,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { formatPhoneNumber } from "@/lib/phone-utils";
 import { format, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
+import { EditServiceDialog } from "@/components/EditServiceDialog";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Edit } from "lucide-react";
+
+const BRAZIL_TZ = 'America/Sao_Paulo';
 
 const BusinessDashboard = () => {
   const navigate = useNavigate();
@@ -30,6 +34,8 @@ const BusinessDashboard = () => {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showServiceDialog, setShowServiceDialog] = useState(false);
+  const [showEditServiceDialog, setShowEditServiceDialog] = useState(false);
+  const [editingService, setEditingService] = useState<any>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
@@ -160,6 +166,45 @@ const BusinessDashboard = () => {
     } catch (error: any) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
     }
+  };
+
+  const handleEditService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!business || !editingService) return;
+
+    try {
+      const { error } = await supabase
+        .from("services")
+        .update({
+          name: serviceName,
+          description: serviceDescription,
+          duration_minutes: parseInt(serviceDuration),
+          price: parseFloat(servicePrice),
+        })
+        .eq("id", editingService.id);
+
+      if (error) throw error;
+
+      toast({ title: "Serviço atualizado!", description: "Seu serviço foi atualizado com sucesso." });
+      setShowEditServiceDialog(false);
+      setEditingService(null);
+      setServiceName("");
+      setServiceDescription("");
+      setServiceDuration("");
+      setServicePrice("");
+      fetchBusinessData();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Erro", description: error.message });
+    }
+  };
+
+  const openEditServiceDialog = (service: any) => {
+    setEditingService(service);
+    setServiceName(service.name);
+    setServiceDescription(service.description || "");
+    setServiceDuration(service.duration_minutes.toString());
+    setServicePrice(service.price.toString());
+    setShowEditServiceDialog(true);
   };
 
   const handleUpdateAppointmentStatus = async (appointmentId: string, status: "confirmed" | "completed" | "cancelled") => {
@@ -314,7 +359,7 @@ const BusinessDashboard = () => {
   };
 
   const todayAppointments = appointments.filter(
-    (app) => app.status !== "cancelled" && format(parseISO(app.appointment_date), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+    (app) => app.status !== "cancelled" && format(parseISO(app.appointment_date), "yyyy-MM-dd") === formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd")
   );
 
   const filteredAppointments = appointments.filter((app) => {
@@ -688,6 +733,20 @@ const BusinessDashboard = () => {
           onRescheduleSuccess={fetchBusinessData}
         />
       )}
+
+      <EditServiceDialog
+        open={showEditServiceDialog}
+        onOpenChange={setShowEditServiceDialog}
+        serviceName={serviceName}
+        setServiceName={setServiceName}
+        serviceDescription={serviceDescription}
+        setServiceDescription={setServiceDescription}
+        serviceDuration={serviceDuration}
+        setServiceDuration={setServiceDuration}
+        servicePrice={servicePrice}
+        setServicePrice={setServicePrice}
+        onSubmit={handleEditService}
+      />
     </div>
   );
 };

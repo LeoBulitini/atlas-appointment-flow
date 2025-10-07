@@ -113,11 +113,7 @@ export default function BusinessClients() {
       .order("last_appointment_date", { ascending: false });
 
     if (clientsData) {
-      // Filter clients to only show those with at least one appointment
-      const clientsWithAppointments = clientsData.filter(
-        client => client.total_appointments && client.total_appointments > 0
-      );
-      setClients(clientsWithAppointments);
+      setClients(clientsData);
     }
     setLoading(false);
   };

@@ -127,6 +127,32 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`✅ Cliente criado com sucesso: ${newUser.user.id}`);
 
+    // Get business ID of the authenticated user
+    const { data: business } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", user.id)
+      .single();
+
+    if (business) {
+      // Insert into business_clients table
+      const { error: businessClientError } = await supabase
+        .from("business_clients")
+        .insert({
+          business_id: business.id,
+          client_id: newUser.user.id,
+          first_appointment_date: null,
+          last_appointment_date: null,
+          total_appointments: 0
+        });
+
+      if (businessClientError) {
+        console.error("Erro ao vincular cliente ao negócio:", businessClientError);
+      } else {
+        console.log(`✅ Cliente vinculado ao negócio: ${business.id}`);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

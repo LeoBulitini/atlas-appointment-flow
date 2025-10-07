@@ -6,7 +6,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { DateRange } from "react-day-picker";
+import { Label } from "@/components/ui/label";
 
 interface DateRangePickerProps {
   dateRange: { from: Date; to: Date };
@@ -14,59 +14,87 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [tempRange, setTempRange] = useState<DateRange | undefined>({
-    from: dateRange.from,
-    to: dateRange.to,
-  });
+  const [fromOpen, setFromOpen] = useState(false);
+  const [toOpen, setToOpen] = useState(false);
 
-  const handleSelect = (range: DateRange | undefined) => {
-    setTempRange(range);
-    
-    // Se ambas as datas estão selecionadas, aplicar e fechar
-    if (range?.from && range?.to) {
-      onDateRangeChange({ from: range.from, to: range.to });
-      setIsOpen(false);
-    } 
-    // Se apenas a data inicial foi selecionada, manter aberto
-    else if (range?.from) {
-      setTempRange({ from: range.from, to: undefined });
+  const handleFromChange = (date: Date | undefined) => {
+    if (date) {
+      onDateRangeChange({ from: date, to: dateRange.to });
+      setFromOpen(false);
     }
   };
 
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open) {
-      // Reset temporary range when opening
-      setTempRange({ from: dateRange.from, to: dateRange.to });
+  const handleToChange = (date: Date | undefined) => {
+    if (date) {
+      onDateRangeChange({ from: dateRange.from, to: date });
+      setToOpen(false);
     }
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className={cn("justify-start text-left font-normal")}>
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {dateRange.from && dateRange.to ? (
-            <>
-              {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} -{" "}
-              {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
-            </>
-          ) : (
-            <span>Selecione o período</span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="range"
-          selected={tempRange}
-          onSelect={handleSelect}
-          numberOfMonths={2}
-          className="pointer-events-auto"
-          locale={ptBR}
-        />
-      </PopoverContent>
-    </Popover>
+    <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex-1">
+        <Label htmlFor="data-inicial" className="mb-2 block text-sm font-medium">
+          Data Inicial
+        </Label>
+        <Popover open={fromOpen} onOpenChange={setFromOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id="data-inicial"
+              variant="outline"
+              className={cn("w-full justify-start text-left font-normal")}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange.from ? (
+                format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
+              ) : (
+                <span>Selecione a data inicial</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={dateRange.from}
+              onSelect={handleFromChange}
+              className="pointer-events-auto"
+              locale={ptBR}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="flex-1">
+        <Label htmlFor="data-final" className="mb-2 block text-sm font-medium">
+          Data Final
+        </Label>
+        <Popover open={toOpen} onOpenChange={setToOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id="data-final"
+              variant="outline"
+              className={cn("w-full justify-start text-left font-normal")}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange.to ? (
+                format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })
+              ) : (
+                <span>Selecione a data final</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={dateRange.to}
+              onSelect={handleToChange}
+              disabled={(date) => date < dateRange.from}
+              className="pointer-events-auto"
+              locale={ptBR}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
   );
 }

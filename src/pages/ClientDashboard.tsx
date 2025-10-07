@@ -36,10 +36,12 @@ const ClientDashboard = () => {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [reviewedAppointments, setReviewedAppointments] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchUserData();
     fetchAppointments();
+    fetchReviews();
 
     const channel = supabase.channel("appointments-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
@@ -58,6 +60,25 @@ const ClientDashboard = () => {
       setProfile(data);
     } catch (error) {
       console.error("Error fetching user data:", error);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("appointment_id")
+        .eq("client_id", user.id);
+
+      if (error) throw error;
+      
+      const reviewedSet = new Set(data?.map(r => r.appointment_id) || []);
+      setReviewedAppointments(reviewedSet);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
     }
   };
 
@@ -124,6 +145,11 @@ const ClientDashboard = () => {
   const openReviewDialog = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setReviewDialogOpen(true);
+  };
+
+  const handleReviewSubmitted = () => {
+    fetchAppointments();
+    fetchReviews();
   };
 
   const openRescheduleDialog = (appointment: Appointment) => {
@@ -271,10 +297,12 @@ const ClientDashboard = () => {
                           {appointment.status === "completed" && (
                             <>
                               <Button size="sm" onClick={() => handleRebook(appointment)}>Agendar Novamente</Button>
-                              <Button size="sm" variant="outline" onClick={() => openReviewDialog(appointment)}>
-                                <Star className="mr-2 h-4 w-4" />
-                                Avaliar
-                              </Button>
+                              {!reviewedAppointments.has(appointment.id) && (
+                                <Button size="sm" variant="outline" onClick={() => openReviewDialog(appointment)}>
+                                  <Star className="mr-2 h-4 w-4" />
+                                  Avaliar
+                                </Button>
+                              )}
                             </>
                           )}
                         </div>
@@ -295,7 +323,7 @@ const ClientDashboard = () => {
             onOpenChange={setReviewDialogOpen}
             appointmentId={selectedAppointment.id}
             businessId={selectedAppointment.business_id}
-            onReviewSubmitted={fetchAppointments}
+            onReviewSubmitted={handleReviewSubmitted}
           />
           <RescheduleDialog
             open={rescheduleDialogOpen}

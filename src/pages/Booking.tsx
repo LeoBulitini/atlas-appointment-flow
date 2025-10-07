@@ -12,11 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin, Phone, Mail, Clock, DollarSign, MessageCircle, X } from "lucide-react";
 import { format, parse, addMinutes, isBefore, isToday, startOfDay } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
 import { formatPhoneNumber } from "@/lib/phone-utils";
 import { Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ReviewsList } from "@/components/ReviewsList";
+
+const BRAZIL_TZ = 'America/Sao_Paulo';
 
 interface ReviewsSectionProps {
   businessId: string;
@@ -378,8 +381,8 @@ const Booking = () => {
 
       // Check if slot is in the past
       const isPast = isToday(selectedDate) && isBefore(
-        parse(slotTime, "HH:mm", new Date()),
-        new Date()
+        parse(slotTime, "HH:mm", toZonedTime(new Date(), BRAZIL_TZ)),
+        toZonedTime(new Date(), BRAZIL_TZ)
       );
 
       // Check if there's enough consecutive time available for the selected services

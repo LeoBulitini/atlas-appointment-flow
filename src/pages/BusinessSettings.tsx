@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SpecialHoursManager } from "@/components/SpecialHoursManager";
 
@@ -83,6 +84,8 @@ export default function BusinessSettings() {
   const [newService, setNewService] = useState({ name: "", description: "", price: "", duration_minutes: "", image_url: "", is_public: true });
   const [activeTab, setActiveTab] = useState("services");
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   useEffect(() => {
     fetchBusinessData();
@@ -148,19 +151,49 @@ export default function BusinessSettings() {
       description: newService.description,
       price: parseFloat(newService.price),
       duration_minutes: parseInt(newService.duration_minutes),
-      is_active: true,
-      is_public: newService.is_public,
-      image_url: newService.image_url || null
+      image_url: newService.image_url,
+      is_public: newService.is_public
     });
 
+    setLoading(false);
     if (error) {
-      toast({ title: "Erro ao adicionar serviço", variant: "destructive" });
+      toast({ title: "Erro ao adicionar serviço", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Serviço adicionado com sucesso!" });
       setNewService({ name: "", description: "", price: "", duration_minutes: "", image_url: "", is_public: true });
       fetchBusinessData();
     }
+  };
+
+  const openEditServiceDialog = (service: Service) => {
+    setEditingService(service);
+    setShowEditDialog(true);
+  };
+
+  const handleEditService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingService || !business) return;
+
+    setLoading(true);
+    const { error } = await supabase
+      .from("services")
+      .update({
+        name: editingService.name,
+        description: editingService.description,
+        price: editingService.price,
+        duration_minutes: editingService.duration_minutes,
+      })
+      .eq("id", editingService.id);
+
     setLoading(false);
+    if (error) {
+      toast({ title: "Erro ao atualizar serviço", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Serviço atualizado com sucesso!" });
+      setShowEditDialog(false);
+      setEditingService(null);
+      fetchBusinessData();
+    }
   };
 
   const handleServiceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -442,6 +475,10 @@ export default function BusinessSettings() {
                         </div>
                         <Button variant="destructive" size="sm" className="min-h-11" onClick={() => handleDeleteService(service.id)}>
                           <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="min-h-11" onClick={() => openEditServiceDialog(service)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
                         </Button>
                       </div>
                     </div>
@@ -834,6 +871,61 @@ export default function BusinessSettings() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Edit Service Dialog */}
+      {editingService && (
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Serviço</DialogTitle>
+              <DialogDescription>Atualize as informações do serviço</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleEditService} className="space-y-4">
+              <div>
+                <Label htmlFor="edit-service-name">Nome do Serviço *</Label>
+                <Input
+                  id="edit-service-name"
+                  value={editingService.name}
+                  onChange={(e) => setEditingService({ ...editingService, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-service-description">Descrição</Label>
+                <Textarea
+                  id="edit-service-description"
+                  value={editingService.description}
+                  onChange={(e) => setEditingService({ ...editingService, description: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-service-duration">Duração (min) *</Label>
+                  <Input
+                    id="edit-service-duration"
+                    type="number"
+                    value={editingService.duration_minutes}
+                    onChange={(e) => setEditingService({ ...editingService, duration_minutes: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-service-price">Preço (R$) *</Label>
+                  <Input
+                    id="edit-service-price"
+                    type="number"
+                    step="0.01"
+                    value={editingService.price}
+                    onChange={(e) => setEditingService({ ...editingService, price: parseFloat(e.target.value) })}
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>Salvar Alterações</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

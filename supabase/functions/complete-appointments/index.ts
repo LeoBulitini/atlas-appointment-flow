@@ -1,9 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
+import { toZonedTime, formatInTimeZone } from 'https://esm.sh/date-fns-tz@3.2.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+const BRAZIL_TZ = 'America/Sao_Paulo';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,7 +14,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Starting complete-appointments function at:', new Date().toISOString())
+    const now = toZonedTime(new Date(), BRAZIL_TZ);
+    console.log('Starting complete-appointments function at:', formatInTimeZone(now, BRAZIL_TZ, 'yyyy-MM-dd HH:mm:ss'));
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -35,7 +39,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true,
         message: 'Appointments completed successfully',
-        timestamp: new Date().toISOString()
+        timestamp: formatInTimeZone(now, BRAZIL_TZ, 'yyyy-MM-dd HH:mm:ss')
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, DollarSign, Users, TrendingUp, Clock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { DateRangePicker } from "@/components/DateRangePicker";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 interface AnalyticsData {
   totalClients: number;
@@ -30,8 +30,8 @@ export default function BusinessAnalytics() {
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({ 
-    from: new Date(new Date().setDate(new Date().getDate() - 30)),
-    to: new Date()
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date())
   });
 
   useEffect(() => {
