@@ -358,9 +358,29 @@ const BusinessDashboard = () => {
     }
   };
 
-  const todayAppointments = appointments.filter(
-    (app) => app.status !== "cancelled" && format(parseISO(app.appointment_date), "yyyy-MM-dd") === formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd")
-  );
+  const todayAppointments = appointments
+    .filter(
+      (app) => format(parseISO(app.appointment_date), "yyyy-MM-dd") === formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd")
+    )
+    .sort((a, b) => {
+      // Definir prioridade: pendentes primeiro, depois confirmados, depois concluídos e cancelados
+      const statusPriority: Record<string, number> = {
+        pending: 1,
+        confirmed: 2,
+        completed: 3,
+        cancelled: 4,
+      };
+      
+      const priorityA = statusPriority[a.status] || 5;
+      const priorityB = statusPriority[b.status] || 5;
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // Se tiverem o mesmo status, ordenar por horário
+      return a.appointment_time.localeCompare(b.appointment_time);
+    });
 
   const filteredAppointments = appointments.filter((app) => {
     const appDate = parseISO(app.appointment_date);
