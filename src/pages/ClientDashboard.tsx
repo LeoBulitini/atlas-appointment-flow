@@ -10,6 +10,7 @@ import { Calendar, Clock, Star, DollarSign, RefreshCw, LogOut } from "lucide-rea
 import { useToast } from "@/hooks/use-toast";
 import { ReviewDialog } from "@/components/ReviewDialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
+import { ClientLoyaltyCard } from "@/components/ClientLoyaltyCard";
 
 interface Appointment {
   id: string;
@@ -267,6 +268,8 @@ const ClientDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        <ClientLoyaltyCard userId={profile?.id || ""} />
 
         <Card>
           <CardHeader><CardTitle>Meus Agendamentos</CardTitle></CardHeader>

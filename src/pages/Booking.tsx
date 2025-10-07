@@ -162,6 +162,7 @@ interface Business {
   email: string;
   price_range: string;
   opening_hours: any;
+  logo_url: string | null;
   auto_confirm_appointments?: boolean;
   payment_methods?: string[];
 }
@@ -651,8 +652,19 @@ const Booking = () => {
           <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{business.name}</CardTitle>
-                <Badge variant="secondary" className="mt-2">{business.category}</Badge>
+                <div className="flex items-start gap-4">
+                  {business.logo_url && (
+                    <img 
+                      src={business.logo_url} 
+                      alt={business.name}
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <CardTitle>{business.name}</CardTitle>
+                    <Badge variant="secondary" className="mt-2">{business.category}</Badge>
+                  </div>
+                </div>
                 <CardDescription className="mt-2">
                   {business.description}
                 </CardDescription>

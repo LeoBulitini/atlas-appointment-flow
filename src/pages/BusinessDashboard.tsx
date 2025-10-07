@@ -543,6 +543,83 @@ const BusinessDashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8">
+        {/* Header with Business Logo */}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {business?.logo_url && (
+              <img 
+                src={business.logo_url} 
+                alt={business.name}
+                className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover"
+              />
+            )}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">{business?.name || "Dashboard"}</h1>
+              <p className="text-muted-foreground">Gerencie seu negócio</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={refreshing}
+              size="sm"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Menu
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/business/calendar")}>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Calendário
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/financial")}>
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  Financeiro
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/stock")}>
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Estoque
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/loyalty")}>
+                  <Star className="mr-2 h-4 w-4" />
+                  Fidelidade
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/clients")}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Clientes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/reviews")}>
+                  <Star className="mr-2 h-4 w-4" />
+                  Avaliações
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/analytics")}>
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Relatórios
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/marketing")}>
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  Marketing
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configurações
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
         <div className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2">Dashboard da Empresa</h1>
