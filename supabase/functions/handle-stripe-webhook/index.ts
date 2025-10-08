@@ -38,7 +38,7 @@ serve(async (req) => {
     }
 
     const body = await req.text();
-    const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     logStep("Event verified", { type: event.type });
 
     const supabaseClient = createClient(
