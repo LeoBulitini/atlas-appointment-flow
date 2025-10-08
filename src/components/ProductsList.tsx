@@ -87,6 +87,13 @@ export function ProductsList({ businessId, refreshKey, onAddMovement }: Products
                   </div>
                 )}
 
+                {product.selling_price && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Venda:</span>
+                    <span className="text-sm font-semibold">R$ {Number(product.selling_price).toFixed(2)}</span>
+                  </div>
+                )}
+
                 <div className="pt-2 space-y-2">
                   <Button
                     size="sm"

@@ -16,6 +16,7 @@ export function ProductForm({ businessId, onSuccess }: ProductFormProps) {
   const [brand, setBrand] = useState("");
   const [unit, setUnit] = useState("");
   const [costPrice, setCostPrice] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
   const [minimumQuantity, setMinimumQuantity] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,6 +33,7 @@ export function ProductForm({ businessId, onSuccess }: ProductFormProps) {
           brand: brand || null,
           unit,
           cost_price: costPrice ? parseFloat(costPrice) : null,
+          selling_price: sellingPrice ? parseFloat(sellingPrice) : null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 0,
         });
 
@@ -91,6 +93,16 @@ export function ProductForm({ businessId, onSuccess }: ProductFormProps) {
           step="0.01"
           value={costPrice}
           onChange={(e) => setCostPrice(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <Label>Preço de Venda (R$)</Label>
+        <Input
+          type="number"
+          step="0.01"
+          value={sellingPrice}
+          onChange={(e) => setSellingPrice(e.target.value)}
         />
       </div>
 

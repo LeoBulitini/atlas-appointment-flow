@@ -601,6 +601,7 @@ export type Database = {
           is_active: boolean | null
           minimum_quantity: number | null
           name: string
+          selling_price: number | null
           unit: string
           updated_at: string | null
         }
@@ -614,6 +615,7 @@ export type Database = {
           is_active?: boolean | null
           minimum_quantity?: number | null
           name: string
+          selling_price?: number | null
           unit: string
           updated_at?: string | null
         }
@@ -627,6 +629,7 @@ export type Database = {
           is_active?: boolean | null
           minimum_quantity?: number | null
           name?: string
+          selling_price?: number | null
           unit?: string
           updated_at?: string | null
         }
