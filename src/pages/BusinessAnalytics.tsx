@@ -278,7 +278,7 @@ export default function BusinessAnalytics() {
                 <XAxis dataKey="hour" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="count" fill="hsl(var(--secondary))" />
+                <Bar dataKey="count" fill="hsl(var(--chart-1))" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
