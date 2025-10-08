@@ -41,33 +41,18 @@ const BusinessSubscription = () => {
 
   const handleUpgrade = async () => {
     try {
-      setLoading("professional");
-      const { data, error } = await supabase.functions.invoke("upgrade-subscription", {
-        body: { targetPlan: "professional" },
-      });
-      
+      const { data, error } = await supabase.functions.invoke('customer-portal');
       if (error) throw error;
-      
-      if (data?.success) {
-        toast({
-          title: "Upgrade realizado!",
-          description: data.message || "Sua assinatura foi atualizada com sucesso.",
-        });
-        
-        // Aguardar um momento e atualizar o status
-        setTimeout(() => {
-          checkCurrentSubscription();
-        }, 2000);
+      if (data?.url) {
+        window.open(data.url, '_blank');
       }
-    } catch (error: any) {
-      console.error("Error upgrading subscription:", error);
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
       toast({
         variant: "destructive",
-        title: "Erro ao fazer upgrade",
-        description: error.message || "Não foi possível atualizar sua assinatura.",
+        title: "Erro",
+        description: "Não foi possível abrir o portal de gerenciamento.",
       });
-    } finally {
-      setLoading(null);
     }
   };
 
@@ -348,7 +333,7 @@ const BusinessSubscription = () => {
                       ) : (
                         <>
                           <Sparkles className="mr-2 h-4 w-4" />
-                          Fazer Upgrade (Valor Proporcional)
+                          Fazer Upgrade
                         </>
                       )}
                     </Button>
