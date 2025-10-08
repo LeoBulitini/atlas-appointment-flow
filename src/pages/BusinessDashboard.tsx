@@ -188,11 +188,6 @@ const BusinessDashboard = () => {
           .maybeSingle();
         
         setSubscription(subscriptionData);
-        
-        toast({
-          title: "Assinatura sincronizada!",
-          description: "O plano foi atualizado com sucesso.",
-        });
       }
     } catch (error) {
       console.error('Error syncing subscription:', error);
