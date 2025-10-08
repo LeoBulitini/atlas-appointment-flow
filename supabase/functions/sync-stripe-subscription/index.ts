@@ -140,13 +140,36 @@ serve(async (req) => {
     // Get plan type from metadata, price, or default to standard
     let planType: "standard" | "professional" = "standard";
     
+    // Log all subscription items and their prices
+    logStep("Subscription items", {
+      items: subscription.items.data.map((item: any) => ({
+        id: item.id,
+        price_id: item.price?.id,
+        product: item.price?.product,
+      }))
+    });
+    
     if (subscription.metadata?.plan_type) {
       planType = subscription.metadata.plan_type as "standard" | "professional";
       logStep("Plan type from metadata", { planType });
     } else if (subscription.items.data[0]?.price?.id) {
       const priceId = subscription.items.data[0].price.id;
-      planType = PRICE_TO_PLAN[priceId] || "standard";
-      logStep("Plan type from price_id", { priceId, planType });
+      const mappedPlan = PRICE_TO_PLAN[priceId];
+      
+      logStep("Attempting to map price_id to plan", { 
+        priceId, 
+        mappedPlan,
+        availableMappings: Object.keys(PRICE_TO_PLAN)
+      });
+      
+      planType = mappedPlan || "standard";
+      
+      if (!mappedPlan) {
+        logStep("WARNING: price_id not found in mapping - defaulting to standard", { 
+          priceId,
+          availablePriceIds: Object.keys(PRICE_TO_PLAN)
+        });
+      }
     }
 
     // Helper function to safely convert timestamp to ISO string
