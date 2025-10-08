@@ -264,6 +264,19 @@ export function LoyaltyConfig({ businessId, onSave, refreshKey }: LoyaltyConfigP
                 ))}
               </div>
             </div>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div>
+                <Label>Permitir Acúmulo de Visitas</Label>
+                <p className="text-sm text-muted-foreground">
+                  Se desativado, clientes não poderão acumular visitas além do necessário para resgate
+                </p>
+              </div>
+              <Switch 
+                checked={allowPointsAccumulation} 
+                onCheckedChange={setAllowPointsAccumulation} 
+              />
+            </div>
           </div>
         )}
 
