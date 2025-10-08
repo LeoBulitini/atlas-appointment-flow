@@ -39,25 +39,20 @@ const BusinessSubscription = () => {
     }
   };
 
-  const handleManageSubscription = async () => {
+  const handleUpgrade = async () => {
     try {
-      setLoadingPortal(true);
-      const { data, error } = await supabase.functions.invoke("customer-portal");
-
+      const { data, error } = await supabase.functions.invoke('customer-portal');
       if (error) throw error;
-
       if (data?.url) {
-        window.location.href = data.url;
+        window.open(data.url, '_blank');
       }
-    } catch (error: any) {
-      console.error("Error opening customer portal:", error);
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao abrir portal de gerenciamento",
         variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível abrir o portal de gerenciamento.",
       });
-    } finally {
-      setLoadingPortal(false);
     }
   };
 
@@ -173,7 +168,7 @@ const BusinessSubscription = () => {
     "Calendário de agendamentos",
     "Avaliações e reviews",
     "Gestão de serviços",
-    "Relatórios financeiros básicos",
+    "Relatórios básicos",
     "Configurações de horários",
   ];
 
@@ -181,7 +176,7 @@ const BusinessSubscription = () => {
     "Módulo de Estoque",
     "Módulo de Marketing",
     "Módulo de Fidelidade",
-    "Relatórios financeiros completos",
+    "Módulo Financeiro",
   ];
 
   const professionalFeatures = [
@@ -189,7 +184,7 @@ const BusinessSubscription = () => {
     "Módulo de Estoque completo",
     "Módulo de Marketing com campanhas",
     "Programa de Fidelidade",
-    "Relatórios financeiros completos",
+    "Módulo Financeiro completo",
     "Analytics detalhado",
     "Suporte prioritário",
   ];
@@ -240,13 +235,21 @@ const BusinessSubscription = () => {
                   <Badge className="w-full py-2 justify-center" variant="secondary">
                     Plano Atual
                   </Badge>
+                ) : subscriptionStatus?.plan === "professional" ? (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Você tem Professional
+                  </Button>
                 ) : (
                   <>
                     <Button
                       className="w-full"
                       size="lg"
                       onClick={() => handleSubscribe("standard", true)}
-                      disabled={loading !== null || subscriptionStatus?.has_access === true}
+                      disabled={loading !== null}
                     >
                       {loading === "standard" ? (
                         <>
@@ -257,18 +260,16 @@ const BusinessSubscription = () => {
                         "Assinar Agora"
                       )}
                     </Button>
-                    {!subscriptionStatus?.has_access && (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        size="sm"
-                        onClick={() => handleSubscribe("standard", false)}
-                        disabled={loading !== null}
-                      >
-                        <ExternalLink className="mr-2 h-3 w-3" />
-                        Abrir em Nova Aba
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
+                      onClick={() => handleSubscribe("standard", false)}
+                      disabled={loading !== null}
+                    >
+                      <ExternalLink className="mr-2 h-3 w-3" />
+                      Abrir em Nova Aba
+                    </Button>
                   </>
                 )}
               </div>
@@ -307,13 +308,13 @@ const BusinessSubscription = () => {
                   <Badge className="w-full py-2 justify-center" variant="secondary">
                     Plano Atual
                   </Badge>
-                ) : (
+                ) : subscriptionStatus?.plan === "standard" ? (
                   <>
                     <Button
                       className="w-full bg-primary hover:bg-primary/90"
                       size="lg"
-                      onClick={() => handleSubscribe("professional", true)}
-                      disabled={loading !== null || subscriptionStatus?.has_access === true}
+                      onClick={handleUpgrade}
+                      disabled={loading !== null}
                     >
                       {loading === "professional" ? (
                         <>
@@ -323,22 +324,41 @@ const BusinessSubscription = () => {
                       ) : (
                         <>
                           <Sparkles className="mr-2 h-4 w-4" />
-                          {subscriptionStatus?.plan === "standard" ? "Fazer Upgrade" : "Assinar Agora"}
+                          Fazer Upgrade
                         </>
                       )}
                     </Button>
-                    {!subscriptionStatus?.has_access && (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        size="sm"
-                        onClick={() => handleSubscribe("professional", false)}
-                        disabled={loading !== null}
-                      >
-                        <ExternalLink className="mr-2 h-3 w-3" />
-                        Abrir em Nova Aba
-                      </Button>
-                    )}
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      className="w-full bg-primary hover:bg-primary/90"
+                      size="lg"
+                      onClick={() => handleSubscribe("professional", true)}
+                      disabled={loading !== null}
+                    >
+                      {loading === "professional" ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Assinar Agora
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
+                      onClick={() => handleSubscribe("professional", false)}
+                      disabled={loading !== null}
+                    >
+                      <ExternalLink className="mr-2 h-3 w-3" />
+                      Abrir em Nova Aba
+                    </Button>
                   </>
                 )}
               </div>
@@ -347,26 +367,6 @@ const BusinessSubscription = () => {
         </div>
 
         <div className="text-center mt-12 space-y-4">
-          {subscriptionStatus?.has_access && (
-            <Button
-              variant="outline"
-              onClick={handleManageSubscription}
-              disabled={loadingPortal}
-              className="mb-4"
-            >
-              {loadingPortal ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Abrindo...
-                </>
-              ) : (
-                <>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Gerenciar Assinatura
-                </>
-              )}
-            </Button>
-          )}
           <Button
             variant="outline"
             onClick={handleSyncSubscription}

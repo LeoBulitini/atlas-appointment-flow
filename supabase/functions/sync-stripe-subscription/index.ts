@@ -85,6 +85,7 @@ serve(async (req) => {
     logStep("Found Stripe customer", { customerId });
 
     // Get ALL active subscriptions (remove limit to get all)
+    logStep("Fetching all active subscriptions");
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
@@ -101,11 +102,19 @@ serve(async (req) => {
       });
     }
 
+    logStep("Found active subscriptions", {
+      totalSubscriptions: subscriptions.data.length,
+      subscriptionIds: subscriptions.data.map((s: Stripe.Subscription) => s.id),
+    });
+
     // Use the most recent subscription if multiple exist
     const subscription = subscriptions.data.sort((a: Stripe.Subscription, b: Stripe.Subscription) => b.created - a.created)[0];
-    logStep("Found active subscription", { 
-      subscriptionId: subscription.id, 
-      totalSubscriptions: subscriptions.data.length 
+    
+    logStep("Selected most recent subscription", { 
+      subscriptionId: subscription.id,
+      created: subscription.created,
+      current_period_start: subscription.current_period_start,
+      current_period_end: subscription.current_period_end,
     });
 
     // Get plan type from metadata, price, or default to standard
@@ -131,7 +140,12 @@ serve(async (req) => {
       }
     };
 
-    // Prepare subscription data with null checks
+    // Ensure current_period_start and current_period_end are ALWAYS populated
+    const currentPeriodStart = safeTimestampToISO(subscription.current_period_start) || new Date().toISOString();
+    const currentPeriodEnd = safeTimestampToISO(subscription.current_period_end) || 
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Default to +30 days
+
+    // Prepare subscription data with guaranteed periods
     const subscriptionData = {
       business_id: businessId,
       stripe_customer_id: customerId,
@@ -139,12 +153,12 @@ serve(async (req) => {
       plan_type: planType,
       status: subscription.status,
       trial_end_date: safeTimestampToISO(subscription.trial_end),
-      current_period_start: safeTimestampToISO(subscription.current_period_start),
-      current_period_end: safeTimestampToISO(subscription.current_period_end),
+      current_period_start: currentPeriodStart,
+      current_period_end: currentPeriodEnd,
       updated_at: new Date().toISOString(),
     };
 
-    logStep("Prepared subscription data", subscriptionData);
+    logStep("Prepared subscription data with guaranteed periods", subscriptionData);
 
     // Upsert subscription to database
     const { data: upsertData, error: upsertError } = await supabaseClient

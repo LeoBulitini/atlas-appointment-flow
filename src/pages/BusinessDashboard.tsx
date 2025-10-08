@@ -46,6 +46,8 @@ const BusinessDashboard = () => {
     from: startOfDay(new Date()),
     to: endOfDay(new Date(new Date().setDate(new Date().getDate() + 30))),
   });
+  const [subscription, setSubscription] = useState<any>(null);
+  const [syncingSubscription, setSyncingSubscription] = useState(false);
 
   // Service form state
   const [serviceName, setServiceName] = useState("");
@@ -72,7 +74,10 @@ const BusinessDashboard = () => {
       }
 
       // Buscar dados do negócio
-      fetchBusinessData();
+      await fetchBusinessData();
+
+      // Sincronizar assinatura automaticamente
+      await syncSubscription();
     };
 
     initDashboard();
@@ -134,6 +139,15 @@ const BusinessDashboard = () => {
           .order("appointment_date", { ascending: true });
 
         setAppointments(appointmentsData || []);
+
+        // Fetch subscription data
+        const { data: subscriptionData } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("business_id", businessData.id)
+          .single();
+        
+        setSubscription(subscriptionData);
       }
     } catch (error) {
       console.error("Error fetching business data:", error);
@@ -141,6 +155,64 @@ const BusinessDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const syncSubscription = async () => {
+    setSyncingSubscription(true);
+    try {
+      await supabase.functions.invoke('sync-stripe-subscription');
+      
+      // Fetch updated subscription data
+      if (business?.id) {
+        const { data: subscriptionData } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("business_id", business.id)
+          .single();
+        
+        setSubscription(subscriptionData);
+      }
+    } catch (error) {
+      console.error('Error syncing subscription:', error);
+    } finally {
+      setSyncingSubscription(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível abrir o portal de gerenciamento.",
+      });
+    }
+  };
+
+  const calculateDaysRemaining = (endDate: string | null) => {
+    if (!endDate) return 0;
+    try {
+      const end = parseISO(endDate);
+      const today = new Date();
+      const days = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return Math.max(0, days);
+    } catch {
+      return 0;
+    }
+  };
+
+  const getSubscriptionStatusColor = (daysRemaining: number) => {
+    if (daysRemaining >= 15) return "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400";
+    if (daysRemaining >= 7) return "bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400";
+    if (daysRemaining >= 1) return "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400";
+    return "bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400";
   };
 
   const handleAddService = async (e: React.FormEvent) => {
@@ -654,6 +726,73 @@ const BusinessDashboard = () => {
         </Card>
 
         <SubscriptionBanner />
+
+        {subscription && (
+          <Card className={`mb-8 border-2 ${getSubscriptionStatusColor(calculateDaysRemaining(subscription.current_period_end))}`}>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+                    <Star className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-bold text-lg">
+                        Plano {subscription.plan_type === 'standard' ? 'Standard' : 'Professional'}
+                      </p>
+                      <Badge className={subscription.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}>
+                        {subscription.status === 'active' ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {calculateDaysRemaining(subscription.current_period_end)} dias restantes
+                      {subscription.current_period_end && (
+                        <> • Próxima cobrança: {format(parseISO(subscription.current_period_end), "dd/MM/yyyy")}</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleManageSubscription} variant="default">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Gerenciar Assinatura
+                  </Button>
+                  <Button 
+                    onClick={syncSubscription} 
+                    variant="outline"
+                    disabled={syncingSubscription}
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${syncingSubscription ? 'animate-spin' : ''}`} />
+                    Sincronizar
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!subscription && (
+          <Card className="mb-8 border-2 border-orange-500/20 bg-orange-500/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-500/10">
+                    <Star className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg">Nenhum plano ativo</p>
+                    <p className="text-sm text-muted-foreground">
+                      Assine um plano para desbloquear recursos avançados
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={() => navigate('/business/subscription')} variant="default">
+                  Ver Planos
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Card>
