@@ -479,6 +479,7 @@ export type Database = {
       }
       loyalty_programs: {
         Row: {
+          allow_points_accumulation: boolean | null
           business_id: string
           created_at: string | null
           id: string
@@ -494,6 +495,7 @@ export type Database = {
           visits_required: number | null
         }
         Insert: {
+          allow_points_accumulation?: boolean | null
           business_id: string
           created_at?: string | null
           id?: string
@@ -509,6 +511,7 @@ export type Database = {
           visits_required?: number | null
         }
         Update: {
+          allow_points_accumulation?: boolean | null
           business_id?: string
           created_at?: string | null
           id?: string

@@ -26,6 +26,7 @@ export function LoyaltyConfig({ businessId, onSave, refreshKey }: LoyaltyConfigP
   const [pointsPerReal, setPointsPerReal] = useState("1");
   const [pointsRequired, setPointsRequired] = useState("");
   const [rewardValue, setRewardValue] = useState("");
+  const [allowPointsAccumulation, setAllowPointsAccumulation] = useState(true);
   
   // Visitas config
   const [visitsRequired, setVisitsRequired] = useState("");
@@ -71,6 +72,7 @@ export function LoyaltyConfig({ businessId, onSave, refreshKey }: LoyaltyConfigP
       setQualifyingServices(data.qualifying_services || []);
       setRewardServices(data.reward_services || []);
       setPointsValidityDays(data.points_validity_days?.toString() || "");
+      setAllowPointsAccumulation(data.allow_points_accumulation ?? true);
     }
     setLoading(false);
   };
@@ -88,6 +90,7 @@ export function LoyaltyConfig({ businessId, onSave, refreshKey }: LoyaltyConfigP
         qualifying_services: programType === "visitas" && qualifyingServices.length > 0 ? qualifyingServices : null,
         reward_services: programType === "visitas" && rewardServices.length > 0 ? rewardServices : null,
         points_validity_days: pointsValidityDays ? parseInt(pointsValidityDays) : null,
+        allow_points_accumulation: allowPointsAccumulation,
       };
 
       if (programId) {
@@ -189,6 +192,19 @@ export function LoyaltyConfig({ businessId, onSave, refreshKey }: LoyaltyConfigP
                 value={pointsValidityDays}
                 onChange={(e) => setPointsValidityDays(e.target.value)}
                 placeholder="Deixe vazio para pontos sem validade"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div>
+                <Label>Permitir Acúmulo de Pontos</Label>
+                <p className="text-sm text-muted-foreground">
+                  Se desativado, clientes não poderão acumular pontos além do necessário para resgate
+                </p>
+              </div>
+              <Switch 
+                checked={allowPointsAccumulation} 
+                onCheckedChange={setAllowPointsAccumulation} 
               />
             </div>
           </div>
