@@ -138,7 +138,7 @@ export const StockReports = ({ businessId }: StockReportsProps) => {
 
       <Tabs defaultValue="top-selling" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="top-selling">Produtos Mais Vendidos</TabsTrigger>
+          <TabsTrigger value="top-selling">Mais Vendidos</TabsTrigger>
           <TabsTrigger value="revenue">Faturamento</TabsTrigger>
           <TabsTrigger value="stock-total">Estoque Total</TabsTrigger>
         </TabsList>
