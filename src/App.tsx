@@ -135,7 +135,7 @@ const App = () => (
             path="/business/financial"
             element={
               <ProtectedRoute requiredUserType="business">
-                <SubscriptionGuard>
+                <SubscriptionGuard requiredPlan="professional">
                   <BusinessFinancial />
                 </SubscriptionGuard>
               </ProtectedRoute>

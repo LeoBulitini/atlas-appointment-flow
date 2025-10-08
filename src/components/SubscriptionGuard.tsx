@@ -63,12 +63,20 @@ const SubscriptionGuard = ({ children, requiredPlan }: SubscriptionGuardProps) =
               Este módulo está disponível apenas no <strong>Plano Professional</strong>.
               Faça upgrade para ter acesso completo ao sistema.
             </p>
-            <a 
-              href="/business/subscription" 
-              className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Fazer Upgrade
-            </a>
+            <div className="flex flex-col gap-3">
+              <a 
+                href="/business/subscription" 
+                className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 transition-colors"
+              >
+                Fazer Upgrade
+              </a>
+              <a 
+                href="/dashboard/business" 
+                className="inline-block bg-secondary text-secondary-foreground px-6 py-3 rounded-md hover:bg-secondary/90 transition-colors"
+              >
+                Voltar ao Dashboard
+              </a>
+            </div>
           </div>
         </div>
       </>

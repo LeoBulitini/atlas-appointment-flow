@@ -84,11 +84,10 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Get active subscriptions
+    // Get ALL active subscriptions (remove limit to get all)
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
-      limit: 1,
     });
 
     if (subscriptions.data.length === 0) {
@@ -102,8 +101,12 @@ serve(async (req) => {
       });
     }
 
-    const subscription = subscriptions.data[0];
-    logStep("Found active subscription", { subscriptionId: subscription.id });
+    // Use the most recent subscription if multiple exist
+    const subscription = subscriptions.data.sort((a: Stripe.Subscription, b: Stripe.Subscription) => b.created - a.created)[0];
+    logStep("Found active subscription", { 
+      subscriptionId: subscription.id, 
+      totalSubscriptions: subscriptions.data.length 
+    });
 
     // Get plan type from metadata, price, or default to standard
     let planType: "standard" | "professional" = "standard";
@@ -144,17 +147,33 @@ serve(async (req) => {
     logStep("Prepared subscription data", subscriptionData);
 
     // Upsert subscription to database
-    const { error: upsertError } = await supabaseClient
+    const { data: upsertData, error: upsertError } = await supabaseClient
       .from("subscriptions")
       .upsert(subscriptionData, {
         onConflict: "business_id"
-      });
+      })
+      .select()
+      .single();
 
     if (upsertError) {
       throw new Error(`Error upserting subscription: ${upsertError.message}`);
     }
 
-    logStep("Subscription synced successfully");
+    logStep("Subscription synced successfully", { subscriptionId: upsertData?.id });
+
+    // Update businesses.subscription_id
+    if (upsertData?.id) {
+      const { error: businessUpdateError } = await supabaseClient
+        .from("businesses")
+        .update({ subscription_id: upsertData.id })
+        .eq("id", businessId);
+
+      if (businessUpdateError) {
+        logStep("Warning: Could not update businesses.subscription_id", { error: businessUpdateError.message });
+      } else {
+        logStep("Updated businesses.subscription_id", { subscriptionId: upsertData.id });
+      }
+    }
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -162,7 +181,8 @@ serve(async (req) => {
       subscription: {
         plan_type: planType,
         status: subscription.status,
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        current_period_end: subscriptionData.current_period_end,
+        current_period_start: subscriptionData.current_period_start,
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

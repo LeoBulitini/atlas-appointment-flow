@@ -48,10 +48,32 @@ serve(async (req) => {
         logStep("Processing subscription", { id: subscription.id, status: subscription.status });
 
         const businessId = subscription.metadata?.business_id;
-        const planType = subscription.metadata?.plan_type;
+        const planType = subscription.metadata?.plan_type as "standard" | "professional" | undefined;
 
         if (!businessId || !planType) {
           throw new Error("Missing metadata in subscription");
+        }
+
+        // Check if this is a downgrade from Professional to Standard
+        if (event.type === "customer.subscription.updated") {
+          const previousAttributes = (event.data as any).previous_attributes;
+          const oldPlanType = previousAttributes?.metadata?.plan_type;
+          
+          if (oldPlanType === "professional" && planType === "standard") {
+            logStep("Detected downgrade from Professional to Standard", { businessId });
+            
+            // Deactivate loyalty programs for this business
+            const { error: loyaltyError } = await supabaseClient
+              .from("loyalty_programs")
+              .update({ is_active: false })
+              .eq("business_id", businessId);
+            
+            if (loyaltyError) {
+              logStep("Warning: Could not deactivate loyalty program", { error: loyaltyError.message });
+            } else {
+              logStep("Loyalty program deactivated due to downgrade");
+            }
+          }
         }
 
         // Upsert subscription

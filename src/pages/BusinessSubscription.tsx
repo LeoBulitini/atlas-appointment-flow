@@ -1,20 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, Loader2, Sparkles, ExternalLink } from "lucide-react";
+import { Check, Loader2, Sparkles, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface SubscriptionStatus {
+  has_access: boolean;
+  plan: "standard" | "professional" | null;
+  status: string | null;
+  days_remaining: number;
+}
 
 const BusinessSubscription = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [loadingPortal, setLoadingPortal] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    checkCurrentSubscription();
+  }, []);
+
+  const checkCurrentSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-subscription");
+      if (error) throw error;
+      setSubscriptionStatus(data);
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      setLoadingPortal(true);
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error: any) {
+      console.error("Error opening customer portal:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao abrir portal de gerenciamento",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPortal(false);
+    }
+  };
 
   const handleSyncSubscription = async () => {
     try {
@@ -136,6 +181,7 @@ const BusinessSubscription = () => {
     "Módulo de Estoque",
     "Módulo de Marketing",
     "Módulo de Fidelidade",
+    "Relatórios financeiros completos",
   ];
 
   const professionalFeatures = [
@@ -143,7 +189,7 @@ const BusinessSubscription = () => {
     "Módulo de Estoque completo",
     "Módulo de Marketing com campanhas",
     "Programa de Fidelidade",
-    "Relatórios avançados",
+    "Relatórios financeiros completos",
     "Analytics detalhado",
     "Suporte prioritário",
   ];
@@ -190,31 +236,41 @@ const BusinessSubscription = () => {
               </div>
 
               <div className="space-y-2">
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={() => handleSubscribe("standard", true)}
-                  disabled={loading !== null}
-                >
-                  {loading === "standard" ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    "Assinar Agora"
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  size="sm"
-                  onClick={() => handleSubscribe("standard", false)}
-                  disabled={loading !== null}
-                >
-                  <ExternalLink className="mr-2 h-3 w-3" />
-                  Abrir em Nova Aba
-                </Button>
+                {subscriptionStatus?.has_access && subscriptionStatus?.plan === "standard" ? (
+                  <Badge className="w-full py-2 justify-center" variant="secondary">
+                    Plano Atual
+                  </Badge>
+                ) : (
+                  <>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={() => handleSubscribe("standard", true)}
+                      disabled={loading !== null || subscriptionStatus?.has_access === true}
+                    >
+                      {loading === "standard" ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        "Assinar Agora"
+                      )}
+                    </Button>
+                    {!subscriptionStatus?.has_access && (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        size="sm"
+                        onClick={() => handleSubscribe("standard", false)}
+                        disabled={loading !== null}
+                      >
+                        <ExternalLink className="mr-2 h-3 w-3" />
+                        Abrir em Nova Aba
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -247,40 +303,70 @@ const BusinessSubscription = () => {
               </div>
 
               <div className="space-y-2">
-                <Button
-                  className="w-full bg-primary hover:bg-primary/90"
-                  size="lg"
-                  onClick={() => handleSubscribe("professional", true)}
-                  disabled={loading !== null}
-                >
-                  {loading === "professional" ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Assinar Agora
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  size="sm"
-                  onClick={() => handleSubscribe("professional", false)}
-                  disabled={loading !== null}
-                >
-                  <ExternalLink className="mr-2 h-3 w-3" />
-                  Abrir em Nova Aba
-                </Button>
+                {subscriptionStatus?.has_access && subscriptionStatus?.plan === "professional" ? (
+                  <Badge className="w-full py-2 justify-center" variant="secondary">
+                    Plano Atual
+                  </Badge>
+                ) : (
+                  <>
+                    <Button
+                      className="w-full bg-primary hover:bg-primary/90"
+                      size="lg"
+                      onClick={() => handleSubscribe("professional", true)}
+                      disabled={loading !== null || subscriptionStatus?.has_access === true}
+                    >
+                      {loading === "professional" ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          {subscriptionStatus?.plan === "standard" ? "Fazer Upgrade" : "Assinar Agora"}
+                        </>
+                      )}
+                    </Button>
+                    {!subscriptionStatus?.has_access && (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        size="sm"
+                        onClick={() => handleSubscribe("professional", false)}
+                        disabled={loading !== null}
+                      >
+                        <ExternalLink className="mr-2 h-3 w-3" />
+                        Abrir em Nova Aba
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="text-center mt-12 space-y-4">
+          {subscriptionStatus?.has_access && (
+            <Button
+              variant="outline"
+              onClick={handleManageSubscription}
+              disabled={loadingPortal}
+              className="mb-4"
+            >
+              {loadingPortal ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Abrindo...
+                </>
+              ) : (
+                <>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Gerenciar Assinatura
+                </>
+              )}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={handleSyncSubscription}
