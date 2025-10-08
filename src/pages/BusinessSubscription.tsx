@@ -39,6 +39,38 @@ const BusinessSubscription = () => {
     }
   };
 
+  const handleUpgrade = async () => {
+    try {
+      setLoading("professional");
+      const { data, error } = await supabase.functions.invoke("upgrade-subscription", {
+        body: { targetPlan: "professional" },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast({
+          title: "Upgrade realizado!",
+          description: data.message || "Sua assinatura foi atualizada com sucesso.",
+        });
+        
+        // Aguardar um momento e atualizar o status
+        setTimeout(() => {
+          checkCurrentSubscription();
+        }, 2000);
+      }
+    } catch (error: any) {
+      console.error("Error upgrading subscription:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer upgrade",
+        description: error.message || "Não foi possível atualizar sua assinatura.",
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const handleSyncSubscription = async () => {
     try {
       setSyncing(true);
@@ -305,7 +337,7 @@ const BusinessSubscription = () => {
                     <Button
                       className="w-full bg-primary hover:bg-primary/90"
                       size="lg"
-                      onClick={() => handleSubscribe("professional", true)}
+                      onClick={handleUpgrade}
                       disabled={loading !== null}
                     >
                       {loading === "professional" ? (
@@ -316,19 +348,9 @@ const BusinessSubscription = () => {
                       ) : (
                         <>
                           <Sparkles className="mr-2 h-4 w-4" />
-                          Fazer Upgrade
+                          Fazer Upgrade (Valor Proporcional)
                         </>
                       )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      size="sm"
-                      onClick={() => handleSubscribe("professional", false)}
-                      disabled={loading !== null}
-                    >
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      Abrir em Nova Aba
                     </Button>
                   </>
                 ) : (
