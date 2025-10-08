@@ -137,7 +137,7 @@ serve(async (req) => {
       current_period_end: subscription.current_period_end,
     });
 
-    // Get plan type from metadata, price, or default to standard
+    // Get plan type - PRIORITIZE price_id over metadata (price_id is always current)
     let planType: "standard" | "professional" = "standard";
     
     // Log all subscription items and their prices
@@ -149,10 +149,8 @@ serve(async (req) => {
       }))
     });
     
-    if (subscription.metadata?.plan_type) {
-      planType = subscription.metadata.plan_type as "standard" | "professional";
-      logStep("Plan type from metadata", { planType });
-    } else if (subscription.items.data[0]?.price?.id) {
+    // First try to get plan from price_id (most reliable source)
+    if (subscription.items.data[0]?.price?.id) {
       const priceId = subscription.items.data[0].price.id;
       const mappedPlan = PRICE_TO_PLAN[priceId];
       
@@ -162,14 +160,24 @@ serve(async (req) => {
         availableMappings: Object.keys(PRICE_TO_PLAN)
       });
       
-      planType = mappedPlan || "standard";
-      
-      if (!mappedPlan) {
-        logStep("WARNING: price_id not found in mapping - defaulting to standard", { 
+      if (mappedPlan) {
+        planType = mappedPlan;
+        logStep("Plan type from price_id (RELIABLE)", { planType, priceId });
+      } else {
+        logStep("WARNING: price_id not found in mapping", { 
           priceId,
           availablePriceIds: Object.keys(PRICE_TO_PLAN)
         });
+        // Fallback to metadata if price_id mapping failed
+        if (subscription.metadata?.plan_type) {
+          planType = subscription.metadata.plan_type as "standard" | "professional";
+          logStep("Plan type from metadata (fallback)", { planType });
+        }
       }
+    } else if (subscription.metadata?.plan_type) {
+      // Only use metadata if price_id is not available
+      planType = subscription.metadata.plan_type as "standard" | "professional";
+      logStep("Plan type from metadata (no price_id available)", { planType });
     }
 
     // Helper function to safely convert timestamp to ISO string
