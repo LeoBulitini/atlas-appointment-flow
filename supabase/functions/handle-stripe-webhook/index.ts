@@ -7,6 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
+// Mapeamento de price_id para plan_type
+const PRICE_TO_PLAN: { [key: string]: "standard" | "professional" } = {
+  "price_1SFcf4FMMTUWzveiV1TfxvKr": "standard",
+  "price_1SFch2FMMTUWzveiaqiqpnw8": "professional",
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
@@ -48,30 +54,57 @@ serve(async (req) => {
         logStep("Processing subscription", { id: subscription.id, status: subscription.status });
 
         const businessId = subscription.metadata?.business_id;
-        const planType = subscription.metadata?.plan_type as "standard" | "professional" | undefined;
-
-        if (!businessId || !planType) {
-          throw new Error("Missing metadata in subscription");
+        
+        // Get plan type from metadata or price_id
+        let planType: "standard" | "professional" | undefined = subscription.metadata?.plan_type as "standard" | "professional" | undefined;
+        
+        // If metadata doesn't have plan_type, try to get it from price_id
+        if (!planType && subscription.items.data[0]?.price?.id) {
+          const priceId = subscription.items.data[0].price.id;
+          planType = PRICE_TO_PLAN[priceId];
+          logStep("Plan type detected from price_id", { priceId, planType });
         }
 
-        // Check if this is a downgrade from Professional to Standard
+        if (!businessId) {
+          throw new Error("Missing business_id in subscription metadata");
+        }
+
+        if (!planType) {
+          throw new Error("Could not determine plan_type from metadata or price_id");
+        }
+
+        // Check if this is a plan change (upgrade or downgrade)
         if (event.type === "customer.subscription.updated") {
-          const previousAttributes = (event.data as any).previous_attributes;
-          const oldPlanType = previousAttributes?.metadata?.plan_type;
+          // Get old plan type from database
+          const { data: oldSubscription } = await supabaseClient
+            .from("subscriptions")
+            .select("plan_type")
+            .eq("business_id", businessId)
+            .single();
           
-          if (oldPlanType === "professional" && planType === "standard") {
-            logStep("Detected downgrade from Professional to Standard", { businessId });
+          const oldPlanType = oldSubscription?.plan_type;
+          
+          if (oldPlanType && oldPlanType !== planType) {
+            logStep("Plan change detected", { 
+              oldPlanType, 
+              newPlanType: planType, 
+              businessId 
+            });
             
-            // Deactivate loyalty programs for this business
-            const { error: loyaltyError } = await supabaseClient
-              .from("loyalty_programs")
-              .update({ is_active: false })
-              .eq("business_id", businessId);
-            
-            if (loyaltyError) {
-              logStep("Warning: Could not deactivate loyalty program", { error: loyaltyError.message });
-            } else {
-              logStep("Loyalty program deactivated due to downgrade");
+            // If downgrading from Professional to Standard, deactivate loyalty
+            if (oldPlanType === "professional" && planType === "standard") {
+              logStep("Downgrade detected - deactivating loyalty programs");
+              
+              const { error: loyaltyError } = await supabaseClient
+                .from("loyalty_programs")
+                .update({ is_active: false })
+                .eq("business_id", businessId);
+              
+              if (loyaltyError) {
+                logStep("Warning: Could not deactivate loyalty program", { error: loyaltyError.message });
+              } else {
+                logStep("Loyalty program deactivated due to downgrade");
+              }
             }
           }
         }
