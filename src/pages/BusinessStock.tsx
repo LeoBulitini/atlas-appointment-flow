@@ -9,6 +9,7 @@ import { ProductForm } from "@/components/ProductForm";
 import { ProductsList } from "@/components/ProductsList";
 import { StockMovementForm } from "@/components/StockMovementForm";
 import { StockHistory } from "@/components/StockHistory";
+import { StockReports } from "@/components/StockReports";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,9 +112,10 @@ const BusinessStock = () => {
         )}
 
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="products">Produtos</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
+            <TabsTrigger value="reports">Relatórios</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products">
@@ -129,6 +131,10 @@ const BusinessStock = () => {
 
           <TabsContent value="history">
             <StockHistory businessId={businessId} refreshKey={refreshKey} />
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <StockReports businessId={businessId} />
           </TabsContent>
         </Tabs>
 
