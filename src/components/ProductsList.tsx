@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Package, Plus, Minus } from "lucide-react";
+import { AlertTriangle, Package, Plus, ShoppingCart } from "lucide-react";
+import { SellProductDialog } from "./SellProductDialog";
 
 interface ProductsListProps {
   businessId: string;
@@ -14,6 +15,8 @@ interface ProductsListProps {
 export function ProductsList({ businessId, refreshKey, onAddMovement }: ProductsListProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [sellDialogOpen, setSellDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -33,12 +36,22 @@ export function ProductsList({ businessId, refreshKey, onAddMovement }: Products
     setLoading(false);
   };
 
+  const handleSellClick = (product: any) => {
+    setSelectedProduct(product);
+    setSellDialogOpen(true);
+  };
+
+  const handleSellSuccess = () => {
+    fetchProducts();
+  };
+
   if (loading) {
     return <div>Carregando...</div>;
   }
 
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
       {products.length === 0 ? (
         <Card className="col-span-full">
           <CardContent className="pt-6 text-center">
@@ -104,12 +117,35 @@ export function ProductsList({ businessId, refreshKey, onAddMovement }: Products
                     <Plus className="mr-2 h-4 w-4" />
                     Movimentar Estoque
                   </Button>
+                  
+                  {product.selling_price && (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleSellClick(product)}
+                      disabled={product.current_quantity <= 0}
+                    >
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      Vender
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
           );
         })
       )}
-    </div>
+      </div>
+
+      {selectedProduct && (
+        <SellProductDialog
+          open={sellDialogOpen}
+          onOpenChange={setSellDialogOpen}
+          product={selectedProduct}
+          businessId={businessId}
+          onSuccess={handleSellSuccess}
+        />
+      )}
+    </>
   );
 }
