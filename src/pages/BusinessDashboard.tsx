@@ -160,17 +160,39 @@ const BusinessDashboard = () => {
   const syncSubscription = async () => {
     setSyncingSubscription(true);
     try {
-      await supabase.functions.invoke('sync-stripe-subscription');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Call the sync function
+      const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-stripe-subscription');
       
-      // Fetch updated subscription data
-      if (business?.id) {
+      if (syncError) {
+        console.error('Error syncing subscription:', syncError);
+        return;
+      }
+
+      console.log('Subscription synced successfully:', syncResult);
+      
+      // Get business_id to fetch updated subscription
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+      if (businessData?.id) {
         const { data: subscriptionData } = await supabase
           .from("subscriptions")
           .select("*")
-          .eq("business_id", business.id)
-          .single();
+          .eq("business_id", businessData.id)
+          .maybeSingle();
         
         setSubscription(subscriptionData);
+        
+        toast({
+          title: "Assinatura sincronizada!",
+          description: "O plano foi atualizado com sucesso.",
+        });
       }
     } catch (error) {
       console.error('Error syncing subscription:', error);
