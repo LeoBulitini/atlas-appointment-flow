@@ -4,12 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Loader2, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Check, Loader2, Sparkles, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const BusinessSubscription = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -49,7 +52,7 @@ const BusinessSubscription = () => {
     }
   };
 
-  const handleSubscribe = async (planType: "standard" | "professional") => {
+  const handleSubscribe = async (planType: "standard" | "professional", openInModal: boolean = true) => {
     try {
       setLoading(planType);
       
@@ -76,17 +79,26 @@ const BusinessSubscription = () => {
       console.log("Checkout data received:", data);
 
       if (data?.url) {
-        console.log("Redirecting to:", data.url);
-        // Abrir em nova aba para funcionar dentro do iframe preview
-        window.open(data.url, '_blank');
+        console.log("Checkout URL:", data.url);
         
-        // Mostrar mensagem de sucesso
-        toast({
-          title: "Redirecionando...",
-          description: "Abrindo página de pagamento do Stripe em uma nova aba. Após concluir o pagamento, clique em 'Sincronizar Assinatura' abaixo.",
-        });
+        if (openInModal) {
+          // Abrir no modal embutido
+          setCheckoutUrl(data.url);
+          setShowModal(true);
+          toast({
+            title: "Checkout Aberto",
+            description: "Complete o pagamento na janela aberta",
+          });
+        } else {
+          // Abrir em nova aba
+          window.open(data.url, '_blank');
+          toast({
+            title: "Redirecionando...",
+            description: "Abrindo página de pagamento do Stripe em uma nova aba. Após concluir o pagamento, clique em 'Sincronizar Assinatura' abaixo.",
+          });
+        }
 
-        // Tentar sincronizar após 5 segundos (tempo estimado para o usuário completar o checkout)
+        // Tentar sincronizar após 5 segundos
         setTimeout(async () => {
           try {
             await supabase.functions.invoke("sync-stripe-subscription");
@@ -177,21 +189,33 @@ const BusinessSubscription = () => {
                 ))}
               </div>
 
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={() => handleSubscribe("standard")}
-                disabled={loading !== null}
-              >
-                {loading === "standard" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  "Assinar Plano"
-                )}
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={() => handleSubscribe("standard", true)}
+                  disabled={loading !== null}
+                >
+                  {loading === "standard" ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Assinar Agora"
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                  onClick={() => handleSubscribe("standard", false)}
+                  disabled={loading !== null}
+                >
+                  <ExternalLink className="mr-2 h-3 w-3" />
+                  Abrir em Nova Aba
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -222,24 +246,36 @@ const BusinessSubscription = () => {
                 ))}
               </div>
 
-              <Button
-                className="w-full bg-primary hover:bg-primary/90"
-                size="lg"
-                onClick={() => handleSubscribe("professional")}
-                disabled={loading !== null}
-              >
-                {loading === "professional" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Assinar Plano
-                  </>
-                )}
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90"
+                  size="lg"
+                  onClick={() => handleSubscribe("professional", true)}
+                  disabled={loading !== null}
+                >
+                  {loading === "professional" ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Assinar Agora
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                  onClick={() => handleSubscribe("professional", false)}
+                  disabled={loading !== null}
+                >
+                  <ExternalLink className="mr-2 h-3 w-3" />
+                  Abrir em Nova Aba
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -270,6 +306,27 @@ const BusinessSubscription = () => {
             Pagamento seguro processado pelo Stripe. Seus dados estão protegidos.
           </p>
         </div>
+
+        {/* Modal com iframe do Stripe Checkout */}
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-4xl h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Complete seu Pagamento</DialogTitle>
+              <DialogDescription>
+                Preencha os dados do pagamento no formulário seguro do Stripe
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 h-full">
+              {checkoutUrl && (
+                <iframe
+                  src={checkoutUrl}
+                  className="w-full h-full border-0 rounded-lg"
+                  title="Stripe Checkout"
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
