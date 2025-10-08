@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, Loader2, Sparkles, ExternalLink, Settings, ArrowLeft } from "lucide-react";
+import { Check, Loader2, Sparkles, Settings, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SubscriptionStatus {
@@ -18,8 +17,6 @@ interface SubscriptionStatus {
 const BusinessSubscription = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const navigate = useNavigate();
@@ -33,6 +30,7 @@ const BusinessSubscription = () => {
     try {
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
+      console.log("Subscription status:", data);
       setSubscriptionStatus(data);
     } catch (error) {
       console.error("Error checking subscription:", error);
@@ -92,7 +90,7 @@ const BusinessSubscription = () => {
     }
   };
 
-  const handleSubscribe = async (planType: "standard" | "professional", openInModal: boolean = true) => {
+  const handleSubscribe = async (planType: "standard" | "professional") => {
     try {
       setLoading(planType);
       
@@ -121,22 +119,13 @@ const BusinessSubscription = () => {
       if (data?.url) {
         console.log("Checkout URL:", data.url);
         
-        if (openInModal) {
-          // Abrir no modal embutido
-          setCheckoutUrl(data.url);
-          setShowModal(true);
-          toast({
-            title: "Checkout Aberto",
-            description: "Complete o pagamento na janela aberta",
-          });
-        } else {
-          // Abrir em nova aba
-          window.open(data.url, '_blank');
-          toast({
-            title: "Redirecionando...",
-            description: "Abrindo página de pagamento do Stripe em uma nova aba. Após concluir o pagamento, clique em 'Sincronizar Assinatura' abaixo.",
-          });
-        }
+        // Sempre abrir em nova aba
+        window.open(data.url, '_blank');
+        toast({
+          title: "Checkout Aberto em Nova Aba",
+          description: "Complete o pagamento na aba aberta. Após concluir, clique em 'Sincronizar Assinatura' abaixo para ativar seu plano.",
+          duration: 8000,
+        });
 
         // Tentar sincronizar após 5 segundos
         setTimeout(async () => {
@@ -240,11 +229,11 @@ const BusinessSubscription = () => {
               </div>
 
               <div className="space-y-2">
-                {subscriptionStatus?.has_access && subscriptionStatus?.plan === "standard" ? (
+                {subscriptionStatus?.has_access && subscriptionStatus?.plan === "standard" && subscriptionStatus?.status === "active" ? (
                   <Badge className="w-full py-2 justify-center" variant="secondary">
                     Plano Atual
                   </Badge>
-                ) : subscriptionStatus?.plan === "professional" ? (
+                ) : subscriptionStatus?.has_access && subscriptionStatus?.plan === "professional" ? (
                   <Button
                     disabled
                     variant="outline"
@@ -253,33 +242,21 @@ const BusinessSubscription = () => {
                     Você tem Professional
                   </Button>
                 ) : (
-                  <>
-                    <Button
-                      className="w-full"
-                      size="lg"
-                      onClick={() => handleSubscribe("standard", true)}
-                      disabled={loading !== null}
-                    >
-                      {loading === "standard" ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processando...
-                        </>
-                      ) : (
-                        "Assinar Agora"
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      size="sm"
-                      onClick={() => handleSubscribe("standard", false)}
-                      disabled={loading !== null}
-                    >
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      Abrir em Nova Aba
-                    </Button>
-                  </>
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() => handleSubscribe("standard")}
+                    disabled={loading !== null}
+                  >
+                    {loading === "standard" ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      "Assinar Agora"
+                    )}
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -313,62 +290,48 @@ const BusinessSubscription = () => {
               </div>
 
               <div className="space-y-2">
-                {subscriptionStatus?.has_access && subscriptionStatus?.plan === "professional" ? (
+                {subscriptionStatus?.has_access && subscriptionStatus?.plan === "professional" && subscriptionStatus?.status === "active" ? (
                   <Badge className="w-full py-2 justify-center" variant="secondary">
                     Plano Atual
                   </Badge>
-                ) : subscriptionStatus?.plan === "standard" ? (
-                  <>
-                    <Button
-                      className="w-full bg-primary hover:bg-primary/90"
-                      size="lg"
-                      onClick={handleUpgrade}
-                      disabled={loading !== null}
-                    >
-                      {loading === "professional" ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processando...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Fazer Upgrade
-                        </>
-                      )}
-                    </Button>
-                  </>
+                ) : subscriptionStatus?.has_access && subscriptionStatus?.plan === "standard" && subscriptionStatus?.status === "active" ? (
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90"
+                    size="lg"
+                    onClick={handleUpgrade}
+                    disabled={loadingPortal}
+                  >
+                    {loadingPortal ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Abrindo...
+                      </>
+                    ) : (
+                      <>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Fazer Upgrade
+                      </>
+                    )}
+                  </Button>
                 ) : (
-                  <>
-                    <Button
-                      className="w-full bg-primary hover:bg-primary/90"
-                      size="lg"
-                      onClick={() => handleSubscribe("professional", true)}
-                      disabled={loading !== null}
-                    >
-                      {loading === "professional" ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processando...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Assinar Agora
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      size="sm"
-                      onClick={() => handleSubscribe("professional", false)}
-                      disabled={loading !== null}
-                    >
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      Abrir em Nova Aba
-                    </Button>
-                  </>
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90"
+                    size="lg"
+                    onClick={() => handleSubscribe("professional")}
+                    disabled={loading !== null}
+                  >
+                    {loading === "professional" ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Assinar Agora
+                      </>
+                    )}
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -378,6 +341,7 @@ const BusinessSubscription = () => {
         <div className="text-center mt-12 space-y-4">
           <Button
             variant="outline"
+            size="lg"
             onClick={handleSyncSubscription}
             disabled={syncing}
             className="mb-4"
@@ -401,35 +365,6 @@ const BusinessSubscription = () => {
             Pagamento seguro processado pelo Stripe. Seus dados estão protegidos.
           </p>
         </div>
-
-        {/* Modal com iframe do Stripe Checkout */}
-        <Dialog open={showModal} onOpenChange={setShowModal}>
-          <DialogContent className="max-w-[95vw] w-full h-[95vh] max-h-[95vh] p-0">
-            <DialogHeader className="p-6 pb-4">
-              <DialogTitle>Complete seu Pagamento</DialogTitle>
-              <DialogDescription>
-                Preencha os dados do pagamento no formulário seguro do Stripe. 
-                Após concluir, clique em "Sincronizar Assinatura" na página.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="w-full h-[calc(95vh-120px)] px-6 pb-6">
-              {checkoutUrl ? (
-                <iframe
-                  src={checkoutUrl}
-                  className="w-full h-full border-0 rounded-lg"
-                  title="Stripe Checkout"
-                  onLoad={() => {
-                    console.log("Stripe Checkout iframe loaded");
-                  }}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
