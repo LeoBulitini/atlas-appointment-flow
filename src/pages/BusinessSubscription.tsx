@@ -9,8 +9,45 @@ import { useToast } from "@/hooks/use-toast";
 
 const BusinessSubscription = () => {
   const [loading, setLoading] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const handleSyncSubscription = async () => {
+    try {
+      setSyncing(true);
+      const { data, error } = await supabase.functions.invoke("sync-stripe-subscription");
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Sucesso!",
+          description: "Assinatura sincronizada com sucesso. Atualizando página...",
+        });
+        
+        // Redirecionar para o dashboard após 2 segundos
+        setTimeout(() => {
+          navigate("/dashboard/business");
+        }, 2000);
+      } else {
+        toast({
+          title: "Aviso",
+          description: data?.message || "Nenhuma assinatura ativa encontrada",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error syncing subscription:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao sincronizar assinatura",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleSubscribe = async (planType: "standard" | "professional") => {
     try {
@@ -46,8 +83,17 @@ const BusinessSubscription = () => {
         // Mostrar mensagem de sucesso
         toast({
           title: "Redirecionando...",
-          description: "Abrindo página de pagamento do Stripe em uma nova aba",
+          description: "Abrindo página de pagamento do Stripe em uma nova aba. Após concluir o pagamento, clique em 'Sincronizar Assinatura' abaixo.",
         });
+
+        // Tentar sincronizar após 5 segundos (tempo estimado para o usuário completar o checkout)
+        setTimeout(async () => {
+          try {
+            await supabase.functions.invoke("sync-stripe-subscription");
+          } catch (error) {
+            console.error("Error syncing subscription:", error);
+          }
+        }, 5000);
       } else {
         throw new Error("URL de checkout não foi retornada");
       }
@@ -199,6 +245,24 @@ const BusinessSubscription = () => {
         </div>
 
         <div className="text-center mt-12 space-y-4">
+          <Button
+            variant="outline"
+            onClick={handleSyncSubscription}
+            disabled={syncing}
+            className="mb-4"
+          >
+            {syncing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sincronizando...
+              </>
+            ) : (
+              "Sincronizar Assinatura"
+            )}
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            Já completou o pagamento? Clique no botão acima para sincronizar sua assinatura.
+          </p>
           <p className="text-sm text-muted-foreground">
             Cancele a qualquer momento, sem taxas de cancelamento.
           </p>

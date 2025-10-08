@@ -28,7 +28,22 @@ const SubscriptionBanner = () => {
     try {
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
-      setSubscriptionStatus(data);
+      
+      // Se não tem acesso, tenta sincronizar do Stripe
+      if (!data?.has_access) {
+        console.log("No subscription found, attempting to sync from Stripe...");
+        const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-stripe-subscription");
+        
+        if (!syncError && syncData?.success) {
+          // Tenta verificar novamente após sincronizar
+          const { data: retryData } = await supabase.functions.invoke("check-subscription");
+          setSubscriptionStatus(retryData);
+        } else {
+          setSubscriptionStatus(data);
+        }
+      } else {
+        setSubscriptionStatus(data);
+      }
     } catch (error) {
       console.error("Error checking subscription:", error);
     } finally {
