@@ -22,6 +22,7 @@ const BusinessStock = () => {
   const [showProductForm, setShowProductForm] = useState(false);
   const [showMovementForm, setShowMovementForm] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
 
@@ -69,7 +70,13 @@ const BusinessStock = () => {
     setShowProductForm(false);
     setShowMovementForm(false);
     setSelectedProduct(null);
+    setEditingProduct(null);
     setRefreshKey(prev => prev + 1);
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product);
+    setShowProductForm(true);
   };
 
   if (loading) {
@@ -126,6 +133,7 @@ const BusinessStock = () => {
                 setSelectedProduct(productId);
                 setShowMovementForm(true);
               }}
+              onEditProduct={handleEditProduct}
             />
           </TabsContent>
 
@@ -138,12 +146,19 @@ const BusinessStock = () => {
           </TabsContent>
         </Tabs>
 
-        <Dialog open={showProductForm} onOpenChange={setShowProductForm}>
+        <Dialog open={showProductForm} onOpenChange={(open) => {
+          setShowProductForm(open);
+          if (!open) setEditingProduct(null);
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Novo Produto</DialogTitle>
+              <DialogTitle>{editingProduct ? "Editar Produto" : "Novo Produto"}</DialogTitle>
             </DialogHeader>
-            <ProductForm businessId={businessId} onSuccess={handleSuccess} />
+            <ProductForm 
+              businessId={businessId} 
+              product={editingProduct}
+              onSuccess={handleSuccess} 
+            />
           </DialogContent>
         </Dialog>
 

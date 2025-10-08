@@ -3,16 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Package, Plus, ShoppingCart } from "lucide-react";
+import { AlertTriangle, Package, Plus, ShoppingCart, Pencil } from "lucide-react";
 import { SellProductDialog } from "./SellProductDialog";
 
 interface ProductsListProps {
   businessId: string;
   refreshKey: number;
   onAddMovement: (productId: string) => void;
+  onEditProduct: (product: any) => void;
 }
 
-export function ProductsList({ businessId, refreshKey, onAddMovement }: ProductsListProps) {
+export function ProductsList({ businessId, refreshKey, onAddMovement, onEditProduct }: ProductsListProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -108,15 +109,25 @@ export function ProductsList({ businessId, refreshKey, onAddMovement }: Products
                 )}
 
                 <div className="pt-2 space-y-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => onAddMovement(product.id)}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Movimentar Estoque
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => onAddMovement(product.id)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Movimentar
+                    </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onEditProduct(product)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
                   
                   {product.selling_price && (
                     <Button
