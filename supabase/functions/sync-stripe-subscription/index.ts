@@ -84,18 +84,38 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Get ALL active subscriptions (remove limit to get all)
-    logStep("Fetching all active subscriptions");
-    const subscriptions = await stripe.subscriptions.list({
+    // Get ALL subscriptions (all statuses) to detect cancellations
+    logStep("Fetching all subscriptions");
+    const allSubscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
     });
 
-    if (subscriptions.data.length === 0) {
-      logStep("No active subscriptions found");
+    // Filter for active or trialing subscriptions
+    const activeSubscriptions = allSubscriptions.data.filter(
+      (sub: Stripe.Subscription) => sub.status === "active" || sub.status === "trialing"
+    );
+
+    if (activeSubscriptions.length === 0) {
+      logStep("No active subscriptions found - updating to canceled");
+      
+      // Update existing subscription to canceled status
+      const { error: updateError } = await supabaseClient
+        .from("subscriptions")
+        .update({
+          status: "canceled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("business_id", businessId);
+
+      if (updateError) {
+        logStep("Warning: Could not update subscription to canceled", { error: updateError.message });
+      } else {
+        logStep("Subscription updated to canceled");
+      }
+
       return new Response(JSON.stringify({ 
-        success: false, 
-        message: "No active subscriptions found" 
+        success: true, 
+        message: "No active subscriptions - status updated to canceled" 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -103,12 +123,12 @@ serve(async (req) => {
     }
 
     logStep("Found active subscriptions", {
-      totalSubscriptions: subscriptions.data.length,
-      subscriptionIds: subscriptions.data.map((s: Stripe.Subscription) => s.id),
+      totalSubscriptions: activeSubscriptions.length,
+      subscriptionIds: activeSubscriptions.map((s: Stripe.Subscription) => s.id),
     });
 
     // Use the most recent subscription if multiple exist
-    const subscription = subscriptions.data.sort((a: Stripe.Subscription, b: Stripe.Subscription) => b.created - a.created)[0];
+    const subscription = activeSubscriptions.sort((a: Stripe.Subscription, b: Stripe.Subscription) => b.created - a.created)[0];
     
     logStep("Selected most recent subscription", { 
       subscriptionId: subscription.id,
