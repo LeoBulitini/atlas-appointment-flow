@@ -660,11 +660,10 @@ const BusinessDashboard = () => {
           <div className="flex flex-wrap gap-2">
             <Button 
               variant="outline" 
-              onClick={handleRefresh}
-              disabled={refreshing}
+              onClick={() => window.location.reload()}
               size="sm"
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className="mr-2 h-4 w-4" />
               Atualizar
             </Button>
             <DropdownMenu>
