@@ -39,23 +39,6 @@ const BusinessSubscription = () => {
     }
   };
 
-  const handleUpgrade = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error) {
-      console.error('Error opening customer portal:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível abrir o portal de gerenciamento.",
-      });
-    }
-  };
-
   const handleSyncSubscription = async () => {
     try {
       setSyncing(true);
@@ -322,7 +305,7 @@ const BusinessSubscription = () => {
                     <Button
                       className="w-full bg-primary hover:bg-primary/90"
                       size="lg"
-                      onClick={handleUpgrade}
+                      onClick={() => handleSubscribe("professional", true)}
                       disabled={loading !== null}
                     >
                       {loading === "professional" ? (
@@ -336,6 +319,16 @@ const BusinessSubscription = () => {
                           Fazer Upgrade
                         </>
                       )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
+                      onClick={() => handleSubscribe("professional", false)}
+                      disabled={loading !== null}
+                    >
+                      <ExternalLink className="mr-2 h-3 w-3" />
+                      Abrir em Nova Aba
                     </Button>
                   </>
                 ) : (
