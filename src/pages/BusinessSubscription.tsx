@@ -309,20 +309,28 @@ const BusinessSubscription = () => {
 
         {/* Modal com iframe do Stripe Checkout */}
         <Dialog open={showModal} onOpenChange={setShowModal}>
-          <DialogContent className="max-w-4xl h-[90vh]">
-            <DialogHeader>
+          <DialogContent className="max-w-[95vw] w-full h-[95vh] max-h-[95vh] p-0">
+            <DialogHeader className="p-6 pb-4">
               <DialogTitle>Complete seu Pagamento</DialogTitle>
               <DialogDescription>
-                Preencha os dados do pagamento no formulário seguro do Stripe
+                Preencha os dados do pagamento no formulário seguro do Stripe. 
+                Após concluir, clique em "Sincronizar Assinatura" na página.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 h-full">
-              {checkoutUrl && (
+            <div className="w-full h-[calc(95vh-120px)] px-6 pb-6">
+              {checkoutUrl ? (
                 <iframe
                   src={checkoutUrl}
                   className="w-full h-full border-0 rounded-lg"
                   title="Stripe Checkout"
+                  onLoad={() => {
+                    console.log("Stripe Checkout iframe loaded");
+                  }}
                 />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
               )}
             </div>
           </DialogContent>

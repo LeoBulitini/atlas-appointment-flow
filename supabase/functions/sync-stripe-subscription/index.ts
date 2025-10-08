@@ -7,6 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Mapeamento de price_id para plan_type
+const PRICE_TO_PLAN: { [key: string]: "standard" | "professional" } = {
+  "price_1SFcf4FMMTUWzveiV1TfxvKr": "standard",
+  "price_1SFch2FMMTUWzveiaqiqpnw8": "professional",
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[SYNC-SUBSCRIPTION] ${step}${detailsStr}`);
@@ -99,23 +105,48 @@ serve(async (req) => {
     const subscription = subscriptions.data[0];
     logStep("Found active subscription", { subscriptionId: subscription.id });
 
-    // Get plan type from metadata or price
-    const planType = subscription.metadata?.plan_type || "standard";
+    // Get plan type from metadata, price, or default to standard
+    let planType: "standard" | "professional" = "standard";
+    
+    if (subscription.metadata?.plan_type) {
+      planType = subscription.metadata.plan_type as "standard" | "professional";
+      logStep("Plan type from metadata", { planType });
+    } else if (subscription.items.data[0]?.price?.id) {
+      const priceId = subscription.items.data[0].price.id;
+      planType = PRICE_TO_PLAN[priceId] || "standard";
+      logStep("Plan type from price_id", { priceId, planType });
+    }
+
+    // Helper function to safely convert timestamp to ISO string
+    const safeTimestampToISO = (timestamp: number | null | undefined): string | null => {
+      if (!timestamp) return null;
+      try {
+        return new Date(timestamp * 1000).toISOString();
+      } catch (error) {
+        logStep("Error converting timestamp", { timestamp, error });
+        return null;
+      }
+    };
+
+    // Prepare subscription data with null checks
+    const subscriptionData = {
+      business_id: businessId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscription.id,
+      plan_type: planType,
+      status: subscription.status,
+      trial_end_date: safeTimestampToISO(subscription.trial_end),
+      current_period_start: safeTimestampToISO(subscription.current_period_start),
+      current_period_end: safeTimestampToISO(subscription.current_period_end),
+      updated_at: new Date().toISOString(),
+    };
+
+    logStep("Prepared subscription data", subscriptionData);
 
     // Upsert subscription to database
     const { error: upsertError } = await supabaseClient
       .from("subscriptions")
-      .upsert({
-        business_id: businessId,
-        stripe_customer_id: customerId,
-        stripe_subscription_id: subscription.id,
-        plan_type: planType,
-        status: subscription.status,
-        trial_end_date: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        updated_at: new Date().toISOString(),
-      }, {
+      .upsert(subscriptionData, {
         onConflict: "business_id"
       });
 
