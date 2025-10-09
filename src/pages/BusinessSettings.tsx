@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -86,6 +87,8 @@ export default function BusinessSettings() {
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<{ id: string; name: string; appointmentCount: number } | null>(null);
 
   useEffect(() => {
     fetchBusinessData();
@@ -245,12 +248,49 @@ export default function BusinessSettings() {
     }
   };
 
-  const handleDeleteService = async (id: string) => {
-    const { error } = await supabase.from("services").delete().eq("id", id);
+  const openDeleteServiceDialog = async (service: Service) => {
+    // Contar agendamentos relacionados
+    const { count } = await supabase
+      .from("appointment_services")
+      .select("*", { count: 'exact', head: true })
+      .eq("service_id", service.id);
+    
+    setServiceToDelete({
+      id: service.id,
+      name: service.name,
+      appointmentCount: count || 0
+    });
+    setShowDeleteDialog(true);
+  };
+
+  const handleInactivateService = async () => {
+    if (!serviceToDelete) return;
+    
+    const { error } = await supabase
+      .from("services")
+      .update({ is_active: false })
+      .eq("id", serviceToDelete.id);
+    
+    if (error) {
+      toast({ title: "Erro ao inativar serviço", variant: "destructive" });
+    } else {
+      toast({ title: "Serviço inativado com sucesso" });
+      setShowDeleteDialog(false);
+      setServiceToDelete(null);
+      fetchBusinessData();
+    }
+  };
+
+  const handleDeleteService = async () => {
+    if (!serviceToDelete) return;
+    
+    const { error } = await supabase.from("services").delete().eq("id", serviceToDelete.id);
     if (error) {
       toast({ title: "Erro ao deletar serviço", variant: "destructive" });
     } else {
       toast({ title: "Serviço deletado" });
+      setShowDeleteDialog(false);
+      setServiceToDelete(null);
       fetchBusinessData();
     }
   };
@@ -500,7 +540,7 @@ export default function BusinessSettings() {
                         </div>
                         {/* Desktop: botões ao lado */}
                         <div className="hidden sm:flex gap-2">
-                          <Button variant="destructive" size="sm" className="min-h-11" onClick={() => handleDeleteService(service.id)}>
+                          <Button variant="destructive" size="sm" className="min-h-11" onClick={() => openDeleteServiceDialog(service)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" className="min-h-11" onClick={() => openEditServiceDialog(service)}>
@@ -511,7 +551,7 @@ export default function BusinessSettings() {
                       </div>
                       {/* Mobile: botões embaixo */}
                       <div className="flex sm:hidden gap-2">
-                        <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDeleteService(service.id)}>
+                        <Button variant="destructive" size="sm" className="flex-1" onClick={() => openDeleteServiceDialog(service)}>
                           <Trash2 className="h-4 w-4 mr-2" />
                           Excluir
                         </Button>
@@ -989,6 +1029,33 @@ export default function BusinessSettings() {
           </DialogContent>
         </Dialog>
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão de serviço</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Você está prestes a excluir o serviço <strong>"{serviceToDelete?.name}"</strong>.</p>
+              {serviceToDelete && serviceToDelete.appointmentCount > 0 && (
+                <p className="text-destructive font-medium">
+                  ⚠️ Existem {serviceToDelete.appointmentCount} agendamento(s) relacionado(s) a este serviço. 
+                  Todos esses registros históricos serão apagados permanentemente.
+                </p>
+              )}
+              <p className="mt-4">Você pode optar por apenas inativar o serviço, mantendo o histórico preservado.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={handleInactivateService}>
+              Apenas Inativar
+            </Button>
+            <AlertDialogAction onClick={handleDeleteService} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir Permanentemente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
