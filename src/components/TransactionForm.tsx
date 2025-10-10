@@ -11,41 +11,66 @@ import { useToast } from "@/hooks/use-toast";
 interface TransactionFormProps {
   businessId: string;
   onSuccess: () => void;
+  transaction?: any;
 }
 
-export function TransactionForm({ businessId, onSuccess }: TransactionFormProps) {
+export function TransactionForm({ businessId, onSuccess, transaction }: TransactionFormProps) {
   const { toast } = useToast();
-  const [type, setType] = useState<"receita" | "despesa">("receita");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [amount, setAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [transactionDate, setTransactionDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [type, setType] = useState<"receita" | "despesa">(transaction?.type || "receita");
+  const [description, setDescription] = useState(transaction?.description || "");
+  const [category, setCategory] = useState(transaction?.category || "");
+  const [amount, setAmount] = useState(transaction?.amount?.toString() || "");
+  const [paymentMethod, setPaymentMethod] = useState(transaction?.payment_method || "");
+  const [transactionDate, setTransactionDate] = useState(
+    transaction?.transaction_date || format(new Date(), "yyyy-MM-dd")
+  );
   const [submitting, setSubmitting] = useState(false);
+  const isEditing = !!transaction;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      const { error } = await supabase
-        .from("financial_transactions")
-        .insert({
-          business_id: businessId,
-          type,
-          description,
-          category,
-          amount: parseFloat(amount),
-          payment_method: paymentMethod || null,
-          transaction_date: transactionDate,
+      if (isEditing) {
+        const { error } = await supabase
+          .from("financial_transactions")
+          .update({
+            type,
+            description,
+            category,
+            amount: parseFloat(amount),
+            payment_method: paymentMethod || null,
+            transaction_date: transactionDate,
+          })
+          .eq("id", transaction.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: "Transação atualizada com sucesso",
         });
+      } else {
+        const { error } = await supabase
+          .from("financial_transactions")
+          .insert({
+            business_id: businessId,
+            type,
+            description,
+            category,
+            amount: parseFloat(amount),
+            payment_method: paymentMethod || null,
+            transaction_date: transactionDate,
+          });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Sucesso",
-        description: "Transação registrada com sucesso",
-      });
+        toast({
+          title: "Sucesso",
+          description: "Transação registrada com sucesso",
+        });
+      }
 
       onSuccess();
     } catch (error: any) {
@@ -131,7 +156,7 @@ export function TransactionForm({ businessId, onSuccess }: TransactionFormProps)
       </div>
 
       <Button type="submit" className="w-full" disabled={submitting}>
-        {submitting ? "Salvando..." : "Salvar"}
+        {submitting ? "Salvando..." : (isEditing ? "Atualizar" : "Salvar")}
       </Button>
     </form>
   );

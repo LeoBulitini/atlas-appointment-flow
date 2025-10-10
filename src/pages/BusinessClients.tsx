@@ -77,6 +77,7 @@ export default function BusinessClients() {
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
   const [newClientData, setNewClientData] = useState({ full_name: "", phone: "", email: "", password: "" });
   const [creatingClient, setCreatingClient] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchClients();
@@ -497,12 +498,26 @@ export default function BusinessClients() {
               <CardTitle>Lista de Clientes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {clients.length === 0 ? (
+              <div className="relative">
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por nome do cliente..."
+                  className="w-full"
+                />
+              </div>
+              {clients.filter(client => 
+                client.profiles.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+              ).length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  Nenhum cliente ainda. Quando alguém agendar, aparecerá aqui!
+                  {searchTerm ? "Nenhum cliente encontrado com esse nome." : "Nenhum cliente ainda. Quando alguém agendar, aparecerá aqui!"}
                 </p>
               ) : (
-                clients.map((client) => (
+                clients
+                  .filter(client => 
+                    client.profiles.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((client) => (
                   <div
                     key={client.id}
                     className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted hover:text-foreground ${

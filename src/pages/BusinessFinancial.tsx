@@ -19,6 +19,7 @@ const BusinessFinancial = () => {
   const [businessId, setBusinessId] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editingTransaction, setEditingTransaction] = useState<any>(null);
 
   useEffect(() => {
     checkAuth();
@@ -45,11 +46,13 @@ const BusinessFinancial = () => {
 
   const handleTransactionAdded = () => {
     setShowForm(false);
+    setEditingTransaction(null);
     setRefreshKey(prev => prev + 1);
-    toast({
-      title: "Sucesso",
-      description: "Transação registrada com sucesso",
-    });
+  };
+
+  const handleEditTransaction = (transaction: any) => {
+    setEditingTransaction(transaction);
+    setShowForm(true);
   };
 
   if (loading) {
@@ -81,17 +84,25 @@ const BusinessFinancial = () => {
         <div className="space-y-6">
           <FinancialSummary businessId={businessId} refreshKey={refreshKey} />
           <FinancialChart businessId={businessId} refreshKey={refreshKey} />
-          <TransactionsList businessId={businessId} refreshKey={refreshKey} />
+          <TransactionsList 
+            businessId={businessId} 
+            refreshKey={refreshKey}
+            onEdit={handleEditTransaction}
+          />
         </div>
 
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) setEditingTransaction(null);
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nova Transação</DialogTitle>
+              <DialogTitle>{editingTransaction ? "Editar Transação" : "Nova Transação"}</DialogTitle>
             </DialogHeader>
             <TransactionForm 
               businessId={businessId}
               onSuccess={handleTransactionAdded}
+              transaction={editingTransaction}
             />
           </DialogContent>
         </Dialog>

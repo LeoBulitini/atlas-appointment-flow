@@ -2,18 +2,22 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Filter } from "lucide-react";
+import { Download, Filter, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface TransactionsListProps {
   businessId: string;
   refreshKey: number;
+  onEdit: (transaction: any) => void;
 }
 
-export function TransactionsList({ businessId, refreshKey }: TransactionsListProps) {
+export function TransactionsList({ businessId, refreshKey, onEdit }: TransactionsListProps) {
+  const { toast } = useToast();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +25,8 @@ export function TransactionsList({ businessId, refreshKey }: TransactionsListPro
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<any>(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -64,6 +70,37 @@ export function TransactionsList({ businessId, refreshKey }: TransactionsListPro
     }
 
     setFilteredTransactions(filtered);
+  };
+
+  const handleDeleteClick = (transaction: any) => {
+    setTransactionToDelete(transaction);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!transactionToDelete) return;
+
+    const { error } = await supabase
+      .from("financial_transactions")
+      .delete()
+      .eq("id", transactionToDelete.id);
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a transação",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Sucesso",
+        description: "Transação excluída com sucesso",
+      });
+      fetchTransactions();
+    }
+
+    setDeleteDialogOpen(false);
+    setTransactionToDelete(null);
   };
 
   const exportToCSV = () => {
@@ -179,14 +216,50 @@ export function TransactionsList({ businessId, refreshKey }: TransactionsListPro
                     {transaction.payment_method && ` • ${transaction.payment_method}`}
                   </div>
                 </div>
-                <div className={`text-lg font-bold ${transaction.type === "receita" ? "text-green-600" : "text-red-600"}`}>
-                  {transaction.type === "receita" ? "+" : "-"}R$ {Number(transaction.amount).toFixed(2)}
+                <div className="flex items-center gap-4">
+                  <div className={`text-lg font-bold ${transaction.type === "receita" ? "text-green-600" : "text-red-600"}`}>
+                    {transaction.type === "receita" ? "+" : "-"}R$ {Number(transaction.amount).toFixed(2)}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEdit(transaction)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteClick(transaction)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))
           )}
         </div>
       </CardContent>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a transação "{transactionToDelete?.description}"?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
