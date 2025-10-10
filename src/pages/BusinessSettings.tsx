@@ -268,13 +268,13 @@ export default function BusinessSettings() {
     
     const { error } = await supabase
       .from("services")
-      .update({ is_active: false })
+      .update({ is_public: false })
       .eq("id", serviceToDelete.id);
     
     if (error) {
-      toast({ title: "Erro ao inativar serviço", variant: "destructive" });
+      toast({ title: "Erro ao tornar serviço privado", variant: "destructive" });
     } else {
-      toast({ title: "Serviço inativado com sucesso" });
+      toast({ title: "Serviço tornado privado com sucesso" });
       setShowDeleteDialog(false);
       setServiceToDelete(null);
       fetchBusinessData();
@@ -1042,13 +1042,13 @@ export default function BusinessSettings() {
                   Todos esses registros históricos serão apagados permanentemente.
                 </p>
               )}
-              <p className="mt-4">Você pode optar por apenas inativar o serviço, mantendo o histórico preservado.</p>
+              <p className="mt-4">Você pode optar por apenas tornar o serviço privado, mantendo o histórico preservado.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <Button variant="outline" onClick={handleInactivateService}>
-              Apenas Inativar
+              Apenas Tornar Privado
             </Button>
             <AlertDialogAction onClick={handleDeleteService} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir Permanentemente
