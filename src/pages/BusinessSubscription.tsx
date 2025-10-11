@@ -39,10 +39,26 @@ const BusinessSubscription = () => {
 
   const handleUpgrade = async () => {
     try {
+      setLoadingPortal(true);
+      
+      // CRÍTICO: Abrir janela IMEDIATAMENTE no clique (iOS Safari)
+      const portalWindow = window.open('about:blank', '_blank');
+      
       const { data, error } = await supabase.functions.invoke('customer-portal');
+      
       if (error) throw error;
+      
       if (data?.url) {
-        window.open(data.url, '_blank');
+        // Atualizar URL da janela já aberta
+        if (portalWindow) {
+          portalWindow.location.href = data.url;
+        } else {
+          // Fallback se popup foi bloqueado
+          window.location.href = data.url;
+        }
+      } else {
+        portalWindow?.close();
+        throw new Error("URL do portal não foi retornada");
       }
     } catch (error) {
       console.error('Error opening customer portal:', error);
@@ -51,6 +67,8 @@ const BusinessSubscription = () => {
         title: "Erro",
         description: "Não foi possível abrir o portal de gerenciamento.",
       });
+    } finally {
+      setLoadingPortal(false);
     }
   };
 
@@ -94,8 +112,12 @@ const BusinessSubscription = () => {
     try {
       setLoading(planType);
       
+      // CRÍTICO: Abrir janela IMEDIATAMENTE no clique (iOS Safari)
+      const checkoutWindow = window.open('about:blank', '_blank');
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        checkoutWindow?.close();
         toast({
           title: "Erro",
           description: "Você precisa estar logado para assinar um plano",
@@ -119,11 +141,17 @@ const BusinessSubscription = () => {
       if (data?.url) {
         console.log("Checkout URL:", data.url);
         
-        // Sempre abrir em nova aba
-        window.open(data.url, '_blank');
+        // Atualizar URL da janela já aberta
+        if (checkoutWindow) {
+          checkoutWindow.location.href = data.url;
+        } else {
+          // Fallback se popup foi bloqueado
+          window.location.href = data.url;
+        }
+        
         toast({
-          title: "Checkout Aberto em Nova Aba",
-          description: "Complete o pagamento na aba aberta. Após concluir, clique em 'Sincronizar Assinatura' abaixo para ativar seu plano.",
+          title: "Checkout Aberto",
+          description: "Complete o pagamento na aba aberta. Após concluir, clique em 'Sincronizar Assinatura'.",
           duration: 8000,
         });
 
@@ -136,6 +164,7 @@ const BusinessSubscription = () => {
           }
         }, 5000);
       } else {
+        checkoutWindow?.close();
         throw new Error("URL de checkout não foi retornada");
       }
     } catch (error: any) {

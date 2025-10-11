@@ -44,7 +44,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/complete-profile`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -114,6 +114,25 @@ const Auth = () => {
       });
       return;
     }
+
+    // Validate age - minimum 11 years old
+    const birthDateObj = new Date(birthDate);
+    const today = new Date();
+    const age = today.getFullYear() - birthDateObj.getFullYear();
+    const monthDiff = today.getMonth() - birthDateObj.getMonth();
+    const dayDiff = today.getDate() - birthDateObj.getDate();
+
+    // Ajustar idade se ainda não fez aniversário este ano
+    const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+
+    if (actualAge < 11) {
+      toast({
+        variant: "destructive",
+        title: "Idade insuficiente",
+        description: "Você precisa ter no mínimo 11 anos para se cadastrar",
+      });
+      return;
+    }
     
     setLoading(true);
 
@@ -157,6 +176,12 @@ const Auth = () => {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = maskPhoneInput(e.target.value);
     setPhone(masked);
+  };
+
+  const getMinBirthDate = () => {
+    const today = new Date();
+    const minDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
+    return minDate.toISOString().split('T')[0];
   };
 
   return (
@@ -252,15 +277,16 @@ const Auth = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="birth-date">Data de Nascimento</Label>
-                  <Input
-                    id="birth-date"
-                    type="date"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    required
-                    max={new Date().toISOString().split('T')[0]}
-                    className="w-full"
-                  />
+                      <Input
+                        id="birth-date"
+                        type="date"
+                        value={birthDate}
+                        onChange={(e) => setBirthDate(e.target.value)}
+                        required
+                        max={new Date().toISOString().split('T')[0]}
+                        min={getMinBirthDate()}
+                        className="w-full"
+                      />
                 </div>
                 
                 <div className="space-y-2">
