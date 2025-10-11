@@ -8,17 +8,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Phone, Calendar as CalendarIcon, UserPlus } from "lucide-react";
+import { ArrowLeft, Phone, Calendar as CalendarIcon, UserPlus, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { maskPhoneInput } from "@/lib/phone-utils";
+import { maskPhoneInput, validatePhoneNumber } from "@/lib/phone-utils";
 
 interface Client {
   id: string;
@@ -78,6 +79,9 @@ export default function BusinessClients() {
   const [newClientData, setNewClientData] = useState({ full_name: "", phone: "", email: "", password: "" });
   const [creatingClient, setCreatingClient] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [quickBookingDialogOpen, setQuickBookingDialogOpen] = useState(false);
+  const [quickBookingName, setQuickBookingName] = useState("");
+  const [quickBookingPhone, setQuickBookingPhone] = useState("");
 
   useEffect(() => {
     fetchClients();
@@ -295,6 +299,127 @@ export default function BusinessClients() {
     return times;
   };
 
+  const handleQuickBooking = async () => {
+    if (!quickBookingName.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Por favor, informe o nome do cliente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (quickBookingPhone && !validatePhoneNumber(quickBookingPhone)) {
+      toast({
+        title: "Número inválido",
+        description: "Por favor, insira um número de celular válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedServices.length === 0 || !selectedDate || !selectedTime || !business) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, selecione serviço, data e horário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBookingLoading(true);
+
+    try {
+      // Create a temporary client with generated credentials
+      const tempEmail = `guest_${Date.now()}_${Math.random().toString(36).substring(7)}@temp.local`;
+      const tempPassword = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+      const { data: clientData, error: clientError } = await supabase.functions.invoke('create-client-by-business', {
+        body: {
+          full_name: quickBookingName.trim(),
+          phone: quickBookingPhone.trim() || "+55 00 00000-0000",
+          email: tempEmail,
+          password: tempPassword,
+        },
+      });
+
+      if (clientError) throw clientError;
+      if (!clientData?.client_id) throw new Error("Falha ao criar cliente temporário");
+
+      // Calculate total duration
+      const selectedServiceObjects = services.filter(s => selectedServices.includes(s.id));
+      const totalDuration = selectedServiceObjects.reduce((sum, s) => sum + s.duration_minutes, 0);
+
+      const zonedDate = toZonedTime(selectedDate, BRAZIL_TZ);
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const endTime = new Date(zonedDate);
+      endTime.setHours(hours);
+      endTime.setMinutes(minutes + totalDuration);
+      const endTimeString = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+
+      // Create appointment
+      const { data: appointmentData, error: appointmentError } = await supabase.rpc('create_appointment_if_available', {
+        p_business_id: business.id,
+        p_service_id: selectedServices[0],
+        p_client_id: clientData.client_id,
+        p_appointment_date: format(zonedDate, 'yyyy-MM-dd'),
+        p_appointment_time: selectedTime,
+        p_end_time: endTimeString,
+        p_notes: notes || 'Agendamento rápido',
+        p_auto_confirm: business.auto_confirm_appointments
+      });
+
+      if (appointmentError) throw appointmentError;
+
+      const result = appointmentData as { success: boolean; message?: string; appointment_id?: string };
+      
+      if (result && !result.success) {
+        toast({
+          title: "Horário indisponível",
+          description: result.message || "Este horário já está ocupado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Link all selected services
+      if (result.appointment_id) {
+        for (const serviceId of selectedServices) {
+          await supabase
+            .from('appointment_services')
+            .insert({
+              appointment_id: result.appointment_id,
+              service_id: serviceId
+            });
+        }
+      }
+
+      toast({
+        title: "Agendamento criado!",
+        description: `Agendamento para ${quickBookingName} criado com sucesso.`,
+      });
+
+      setQuickBookingDialogOpen(false);
+      setQuickBookingName("");
+      setQuickBookingPhone("");
+      setSelectedServices([]);
+      setSelectedDate(undefined);
+      setSelectedTime("");
+      setNotes("");
+      
+      await fetchClients();
+    } catch (error: any) {
+      console.error("Erro ao criar agendamento:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível criar o agendamento.",
+        variant: "destructive",
+      });
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
   const handleBookAppointment = async () => {
     if (!bookingClient || selectedServices.length === 0 || !selectedDate || !selectedTime || !business) {
       toast({
@@ -416,13 +541,14 @@ export default function BusinessClients() {
 
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-4">Meus Clientes</h1>
-          <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Criar Cliente
-              </Button>
-            </DialogTrigger>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Criar Cliente
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Criar Novo Cliente</DialogTitle>
@@ -490,6 +616,158 @@ export default function BusinessClients() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={quickBookingDialogOpen} onOpenChange={setQuickBookingDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Agendar S/ Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Agendamento Rápido</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="quick-name">Nome *</Label>
+                    <Input
+                      id="quick-name"
+                      value={quickBookingName}
+                      onChange={(e) => setQuickBookingName(e.target.value)}
+                      placeholder="Nome do cliente"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="quick-phone">Celular (opcional)</Label>
+                    <Input
+                      id="quick-phone"
+                      type="tel"
+                      value={quickBookingPhone}
+                      onChange={(e) => {
+                        const formatted = maskPhoneInput(e.target.value);
+                        setQuickBookingPhone(formatted);
+                      }}
+                      placeholder="+55 (00) 00000-0000"
+                      maxLength={19}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Serviços * (selecione um ou mais)</Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3 mt-2">
+                    {services.map((service) => (
+                      <div key={service.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`quick-${service.id}`}
+                          checked={selectedServices.includes(service.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedServices([...selectedServices, service.id]);
+                            } else {
+                              setSelectedServices(selectedServices.filter(id => id !== service.id));
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`quick-${service.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                        >
+                          {service.name} - R$ {service.price.toFixed(2)} ({service.duration_minutes} min)
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedServices.length > 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Duração total: {services
+                        .filter(s => selectedServices.includes(s.id))
+                        .reduce((sum, s) => sum + s.duration_minutes, 0)} minutos
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Data *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione uma data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {selectedDate && (
+                  <div>
+                    <Label>Horário *</Label>
+                    <Select value={selectedTime} onValueChange={setSelectedTime}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um horário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTimes.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="quick-notes">Observações</Label>
+                  <Textarea
+                    id="quick-notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Observações adicionais..."
+                    className="resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setQuickBookingDialogOpen(false)}
+                    disabled={bookingLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={handleQuickBooking}
+                    disabled={bookingLoading}
+                  >
+                    {bookingLoading ? "Criando..." : "Criar Agendamento"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
