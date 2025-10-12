@@ -12,6 +12,7 @@ interface CreateClientRequest {
   phone: string;
   email: string;
   password: string;
+  is_temporary?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -57,7 +58,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { full_name, phone, email, password }: CreateClientRequest = await req.json();
+    const { full_name, phone, email, password, is_temporary }: CreateClientRequest = await req.json();
 
     // Validações
     if (!full_name || full_name.trim().length < 3) {
@@ -134,7 +135,8 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("owner_id", user.id)
       .single();
 
-    if (business) {
+    // Only add to business_clients if NOT temporary
+    if (business && !is_temporary) {
       // Insert into business_clients table
       const { error: businessClientError } = await supabase
         .from("business_clients")
@@ -151,13 +153,15 @@ const handler = async (req: Request): Promise<Response> => {
       } else {
         console.log(`✅ Cliente vinculado ao negócio: ${business.id}`);
       }
+    } else if (is_temporary) {
+      console.log(`✅ Cliente temporário criado (não vinculado ao negócio): ${newUser.user.id}`);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "Cliente cadastrado com sucesso",
-        user_id: newUser.user.id,
+        client_id: newUser.user.id,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

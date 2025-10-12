@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { maskPhoneInput, validatePhoneNumber } from "@/lib/phone-utils";
+import FloatingActionButton from "@/components/FloatingActionButton";
 
 interface Client {
   id: string;
@@ -92,7 +93,7 @@ export default function BusinessClients() {
     if (selectedDate && business) {
       loadAvailableTimes();
     }
-  }, [selectedDate, business]);
+  }, [selectedDate, business, selectedServices]);
 
   const fetchClients = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -250,6 +251,20 @@ export default function BusinessClients() {
     const zonedDate = toZonedTime(selectedDate, BRAZIL_TZ);
     const dateStr = format(zonedDate, 'yyyy-MM-dd');
 
+    // Calculate total duration of selected services
+    const selectedServiceObjects = services.filter(s => selectedServices.includes(s.id));
+    const totalDuration = selectedServiceObjects.reduce((sum, s) => sum + s.duration_minutes, 0);
+
+    if (totalDuration === 0) return [];
+
+    // Fetch existing appointments to check for conflicts
+    const { data: existingAppointments } = await supabase
+      .from('appointments')
+      .select('appointment_time, end_time')
+      .eq('business_id', business.id)
+      .eq('appointment_date', dateStr)
+      .in('status', ['pending', 'confirmed']);
+
     // Check for special hours first
     const { data: specialHours } = await supabase
       .from("business_special_hours")
@@ -286,14 +301,38 @@ export default function BusinessClients() {
     const [startHour, startMinute] = hours.openTime.split(':').map(Number);
     const [endHour, endMinute] = hours.closeTime.split(':').map(Number);
     
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        if (hour === startHour && minute < startMinute) continue;
-        if (hour === endHour - 1 && minute >= endMinute) break;
-        
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        times.push(timeString);
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    
+    let currentMinutes = startMinutes;
+    
+    while (currentMinutes < endMinutes) {
+      const slotEndMinutes = currentMinutes + totalDuration;
+      
+      // Check if this time slot fits within business hours
+      if (slotEndMinutes > endMinutes) {
+        break;
       }
+      
+      // Check for conflicts with existing appointments
+      const hour = Math.floor(currentMinutes / 60);
+      const minute = currentMinutes % 60;
+      const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      const hasConflict = existingAppointments?.some(apt => {
+        const [aptHour, aptMinute] = apt.appointment_time.split(':').map(Number);
+        const [aptEndHour, aptEndMinute] = apt.end_time.split(':').map(Number);
+        const aptStart = aptHour * 60 + aptMinute;
+        const aptEnd = aptEndHour * 60 + aptEndMinute;
+        
+        return (currentMinutes < aptEnd && slotEndMinutes > aptStart);
+      });
+
+      if (!hasConflict) {
+        times.push(timeStr);
+      }
+      
+      currentMinutes += 30;
     }
     
     return times;
@@ -340,6 +379,7 @@ export default function BusinessClients() {
           phone: quickBookingPhone.trim() || "+55 00 00000-0000",
           email: tempEmail,
           password: tempPassword,
+          is_temporary: true,
         },
       });
 
@@ -1004,6 +1044,8 @@ export default function BusinessClients() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <FloatingActionButton onQuickBooking={() => setQuickBookingDialogOpen(true)} />
     </div>
   );
 }
