@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,13 +77,15 @@ export default function BusinessSettings() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [openingHours, setOpeningHours] = useState<OpeningHours>({});
   const [newService, setNewService] = useState({ name: "", description: "", price: "", duration_minutes: "", image_url: "", is_public: true });
-  const [activeTab, setActiveTab] = useState("services");
+  const initialTab = searchParams.get('tab') || 'services';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -93,6 +95,13 @@ export default function BusinessSettings() {
   useEffect(() => {
     fetchBusinessData();
   }, []);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const fetchBusinessData = async () => {
     const { data: { user } } = await supabase.auth.getUser();

@@ -881,7 +881,7 @@ const BusinessDashboard = () => {
               </TabsList>
               <TabsContent value="upcoming">
                 {filteredAppointments
-                  .filter((a) => a.status !== "completed" && a.status !== "cancelled" && parseISO(a.appointment_date) >= new Date())
+                  .filter((a) => (a.status === "pending" || a.status === "confirmed") && parseISO(a.appointment_date) >= new Date())
                   .map(renderAppointmentCard)}
               </TabsContent>
               <TabsContent value="history">

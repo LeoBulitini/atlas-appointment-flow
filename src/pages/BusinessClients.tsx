@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { maskPhoneInput, validatePhoneNumber } from "@/lib/phone-utils";
-import FloatingActionButton from "@/components/FloatingActionButton";
 
 interface Client {
   id: string;
@@ -332,7 +331,7 @@ export default function BusinessClients() {
         times.push(timeStr);
       }
       
-      currentMinutes += 30;
+      currentMinutes += 15;
     }
     
     return times;
@@ -1044,8 +1043,6 @@ export default function BusinessClients() {
           </DialogContent>
         </Dialog>
       </div>
-
-      <FloatingActionButton onQuickBooking={() => setQuickBookingDialogOpen(true)} />
     </div>
   );
 }

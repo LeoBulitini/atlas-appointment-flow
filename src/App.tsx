@@ -25,6 +25,7 @@ import Booking from "./pages/Booking";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SubscriptionGuard from "./components/SubscriptionGuard";
+import BusinessLayout from "./components/BusinessLayout";
 
 const queryClient = new QueryClient();
 
@@ -62,7 +63,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard>
-                  <BusinessDashboard />
+                  <BusinessLayout>
+                    <BusinessDashboard />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -80,7 +83,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard>
-                  <BusinessSettings />
+                  <BusinessLayout>
+                    <BusinessSettings />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -90,7 +95,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard>
-                  <BusinessClients />
+                  <BusinessLayout>
+                    <BusinessClients />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -100,7 +107,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard>
-                  <BusinessReviews />
+                  <BusinessLayout>
+                    <BusinessReviews />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -110,7 +119,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard>
-                  <BusinessAnalytics />
+                  <BusinessLayout>
+                    <BusinessAnalytics />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -120,7 +131,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard requiredPlan="professional">
-                  <BusinessMarketing />
+                  <BusinessLayout>
+                    <BusinessMarketing />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -130,7 +143,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard>
-                  <BusinessCalendar />
+                  <BusinessLayout>
+                    <BusinessCalendar />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -140,7 +155,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard requiredPlan="professional">
-                  <BusinessFinancial />
+                  <BusinessLayout>
+                    <BusinessFinancial />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -150,7 +167,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard requiredPlan="professional">
-                  <BusinessStock />
+                  <BusinessLayout>
+                    <BusinessStock />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
@@ -160,7 +179,9 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="business">
                 <SubscriptionGuard requiredPlan="professional">
-                  <BusinessLoyalty />
+                  <BusinessLayout>
+                    <BusinessLoyalty />
+                  </BusinessLayout>
                 </SubscriptionGuard>
               </ProtectedRoute>
             }
