@@ -650,6 +650,7 @@ export type Database = {
           created_at: string | null
           full_name: string
           id: string
+          is_temporary: boolean | null
           phone: string | null
           updated_at: string | null
           user_type: Database["public"]["Enums"]["user_type"]
@@ -660,6 +661,7 @@ export type Database = {
           created_at?: string | null
           full_name: string
           id: string
+          is_temporary?: boolean | null
           phone?: string | null
           updated_at?: string | null
           user_type: Database["public"]["Enums"]["user_type"]
@@ -670,6 +672,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string
           id?: string
+          is_temporary?: boolean | null
           phone?: string | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type"]

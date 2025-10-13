@@ -100,6 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
         full_name,
         phone,
         user_type: "client",
+        is_temporary: is_temporary || false,
       },
     });
 
