@@ -70,14 +70,16 @@ const App = () => (
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/business/subscription"
-            element={
-              <ProtectedRoute requiredUserType="business">
-                <BusinessSubscription />
-              </ProtectedRoute>
-            }
-          />
+  <Route
+    path="/business/subscription"
+    element={
+      <ProtectedRoute requiredUserType="business">
+        <BusinessLayout>
+          <BusinessSubscription />
+        </BusinessLayout>
+      </ProtectedRoute>
+    }
+  />
           <Route
             path="/business/settings"
             element={

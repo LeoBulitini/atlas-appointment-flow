@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar, Clock } from "lucide-react";
+import { Plus, Calendar, Clock, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -26,6 +26,11 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
   const handleSettingsClick = () => {
     setShowMenu(false);
     navigate("/business/settings?tab=hours");
+  };
+
+  const handleSubscriptionClick = () => {
+    setShowMenu(false);
+    navigate("/business/subscription");
   };
 
   return (
@@ -69,6 +74,19 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
                 <div className="font-semibold">Ajustar Horários</div>
                 <div className="text-sm text-muted-foreground">
                   Configurar horários de funcionamento
+                </div>
+              </div>
+            </Button>
+            <Button
+              onClick={handleSubscriptionClick}
+              className="w-full justify-start text-left h-auto py-4"
+              variant="outline"
+            >
+              <CreditCard className="mr-3 h-5 w-5" />
+              <div>
+                <div className="font-semibold">Assinatura</div>
+                <div className="text-sm text-muted-foreground">
+                  Gerenciar plano e pagamento
                 </div>
               </div>
             </Button>
