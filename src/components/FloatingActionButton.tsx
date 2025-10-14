@@ -25,7 +25,7 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
 
   const handleSettingsClick = () => {
     setShowMenu(false);
-    navigate("/settings?tab=hours");
+    navigate("/business/settings?tab=hours");
   };
 
   return (
