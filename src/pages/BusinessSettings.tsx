@@ -12,9 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Edit } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit, ChevronDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SpecialHoursManager } from "@/components/SpecialHoursManager";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Service {
   id: string;
@@ -91,6 +92,7 @@ export default function BusinessSettings() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<{ id: string; name: string; appointmentCount: number } | null>(null);
+  const [hoursExpanded, setHoursExpanded] = useState(true);
 
   useEffect(() => {
     fetchBusinessData();
@@ -578,12 +580,23 @@ export default function BusinessSettings() {
 
           <TabsContent value="hours">
             <Card>
-              <CardHeader>
-                <CardTitle>Horário de Funcionamento</CardTitle>
-                <CardDescription>Configure os dias e horários de atendimento</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {DAYS.map((day) => (
+              <Collapsible open={hoursExpanded} onOpenChange={setHoursExpanded}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Horário de Funcionamento</CardTitle>
+                      <CardDescription>Configure os dias e horários de atendimento</CardDescription>
+                    </div>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${hoursExpanded ? '' : 'rotate-180'}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="space-y-6">
+                    {DAYS.map((day) => (
                   <div key={day} className="space-y-4 p-4 border rounded-lg">
                     <div className="flex items-center justify-between">
                       <Label className="text-base font-semibold">{DAY_NAMES[day]}</Label>
@@ -702,6 +715,8 @@ export default function BusinessSettings() {
                   {business?.id && <SpecialHoursManager businessId={business.id} />}
                 </div>
               </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
             </Card>
           </TabsContent>
 
