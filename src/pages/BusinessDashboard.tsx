@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { formatPhoneNumber } from "@/lib/phone-utils";
-import { format, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { format, startOfDay, endOfDay, isWithinInterval, parseISO, subDays, addDays } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -23,6 +23,7 @@ import { EditServiceDialog } from "@/components/EditServiceDialog";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const BRAZIL_TZ = 'America/Sao_Paulo';
 
@@ -62,31 +63,53 @@ const BusinessDashboard = () => {
         return;
       }
 
-      // Chamar função para completar agendamentos passados
-      try {
-        await supabase.functions.invoke('complete-appointments');
-        console.log('Complete appointments function called successfully');
-      } catch (error) {
-        console.error('Error calling complete-appointments:', error);
-      }
-
       // Buscar dados do negócio
       await fetchBusinessData();
+
+      // Chamar função para completar agendamentos passados de forma assíncrona (não bloqueia UI)
+      supabase.functions
+        .invoke('complete-appointments')
+        .then(() => console.log('Complete appointments function called successfully'))
+        .catch((error) => console.error('Error calling complete-appointments:', error));
     };
 
     initDashboard();
 
     const appointmentsChannel = supabase
       .channel("business-appointments-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
-        fetchBusinessData();
+      .on("postgres_changes", { 
+        event: "*", 
+        schema: "public", 
+        table: "appointments",
+        filter: `business_id=eq.${business?.id}` 
+      }, (payload) => {
+        // Update incremental ao invés de recarregar tudo
+        if (payload.eventType === 'INSERT') {
+          setAppointments(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setAppointments(prev => prev.map(app => app.id === payload.new.id ? payload.new : app));
+        } else if (payload.eventType === 'DELETE') {
+          setAppointments(prev => prev.filter(app => app.id !== payload.old.id));
+        }
       })
       .subscribe();
 
     const servicesChannel = supabase
       .channel("services-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => {
-        fetchBusinessData();
+      .on("postgres_changes", { 
+        event: "*", 
+        schema: "public", 
+        table: "services",
+        filter: `business_id=eq.${business?.id}`
+      }, (payload) => {
+        // Update incremental para serviços
+        if (payload.eventType === 'INSERT') {
+          setServices(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setServices(prev => prev.map(svc => svc.id === payload.new.id ? payload.new : svc));
+        } else if (payload.eventType === 'DELETE') {
+          setServices(prev => prev.filter(svc => svc.id !== payload.old.id));
+        }
       })
       .subscribe();
 
@@ -94,7 +117,7 @@ const BusinessDashboard = () => {
       supabase.removeChannel(appointmentsChannel);
       supabase.removeChannel(servicesChannel);
     };
-  }, []);
+  }, [business?.id]);
 
   const fetchBusinessData = async () => {
     try {
@@ -103,7 +126,7 @@ const BusinessDashboard = () => {
 
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
-        .select("*")
+        .select("id, name, logo_url, is_active, view_count")
         .eq("owner_id", user.id)
         .single();
 
@@ -112,25 +135,42 @@ const BusinessDashboard = () => {
       if (businessData) {
         setBusiness(businessData);
 
+        // Buscar apenas serviços ativos
         const { data: servicesData } = await supabase
           .from("services")
-          .select("*")
-          .eq("business_id", businessData.id);
+          .select("id, name, description, duration_minutes, price, image_url, is_active")
+          .eq("business_id", businessData.id)
+          .eq("is_active", true);
         
         setServices(servicesData || []);
+
+        // Otimização: Buscar apenas agendamentos dos últimos 30 dias e próximos 90 dias
+        const today = new Date();
+        const startDate = format(subDays(today, 30), 'yyyy-MM-dd');
+        const endDate = format(addDays(today, 90), 'yyyy-MM-dd');
 
         const { data: appointmentsData } = await supabase
           .from("appointments")
           .select(`
-            *,
-            profiles (full_name, phone),
+            id,
+            appointment_date,
+            appointment_time,
+            end_time,
+            status,
+            used_loyalty_redemption,
+            business_id,
+            service_id,
+            profiles!appointments_client_id_fkey (full_name, phone),
             appointment_services (
               service_id,
               services (name, price)
             )
           `)
           .eq("business_id", businessData.id)
-          .order("appointment_date", { ascending: true });
+          .gte("appointment_date", startDate)
+          .lte("appointment_date", endDate)
+          .order("appointment_date", { ascending: true })
+          .order("appointment_time", { ascending: true });
 
         setAppointments(appointmentsData || []);
       }
@@ -363,65 +403,75 @@ const BusinessDashboard = () => {
     }
   };
 
-  const todayAppointments = appointments
-    .filter(
-      (app) => format(parseISO(app.appointment_date), "yyyy-MM-dd") === formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd")
-    )
-    .sort((a, b) => {
-      // Definir prioridade: pendentes primeiro, depois confirmados, depois concluídos e cancelados
-      const statusPriority: Record<string, number> = {
-        pending: 1,
-        confirmed: 2,
-        completed: 3,
-        cancelled: 4,
-      };
-      
-      const priorityA = statusPriority[a.status] || 5;
-      const priorityB = statusPriority[b.status] || 5;
-      
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB;
-      }
-      
-      // Se tiverem o mesmo status, ordenar por horário
-      return a.appointment_time.localeCompare(b.appointment_time);
-    });
+  // Usar useMemo para otimizar cálculos pesados
+  const todayAppointments = useMemo(() => {
+    const today = formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd");
+    return appointments
+      .filter((app) => format(parseISO(app.appointment_date), "yyyy-MM-dd") === today)
+      .sort((a, b) => {
+        const statusPriority: Record<string, number> = {
+          pending: 1,
+          confirmed: 2,
+          completed: 3,
+          cancelled: 4,
+        };
+        
+        const priorityA = statusPriority[a.status] || 5;
+        const priorityB = statusPriority[b.status] || 5;
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        
+        return a.appointment_time.localeCompare(b.appointment_time);
+      });
+  }, [appointments]);
 
-  const filteredAppointments = appointments
-    .filter((app) => {
-      const appDate = parseISO(app.appointment_date);
-      return isWithinInterval(appDate, { start: dateRange.from, end: dateRange.to });
-    })
-    .sort((a, b) => {
-      // Definir prioridade: pendentes primeiro, depois confirmados, depois concluídos e cancelados
-      const statusPriority: Record<string, number> = {
-        pending: 1,
-        confirmed: 2,
-        completed: 3,
-        cancelled: 4,
-      };
-      
-      const priorityA = statusPriority[a.status] || 5;
-      const priorityB = statusPriority[b.status] || 5;
-      
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB;
-      }
-      
-      // Se tiverem o mesmo status, ordenar por data e horário
-      const dateCompare = a.appointment_date.localeCompare(b.appointment_date);
-      if (dateCompare !== 0) return dateCompare;
-      return a.appointment_time.localeCompare(b.appointment_time);
-    });
+  const filteredAppointments = useMemo(() => {
+    return appointments
+      .filter((app) => {
+        const appDate = parseISO(app.appointment_date);
+        return isWithinInterval(appDate, { start: dateRange.from, end: dateRange.to });
+      })
+      .sort((a, b) => {
+        const statusPriority: Record<string, number> = {
+          pending: 1,
+          confirmed: 2,
+          completed: 3,
+          cancelled: 4,
+        };
+        
+        const priorityA = statusPriority[a.status] || 5;
+        const priorityB = statusPriority[b.status] || 5;
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        
+        const dateCompare = a.appointment_date.localeCompare(b.appointment_date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.appointment_time.localeCompare(b.appointment_time);
+      });
+  }, [appointments, dateRange]);
 
-  const completedAppointments = appointments.filter((app) => app.status === "completed");
-  const totalRevenue = completedAppointments.reduce((sum, app) => {
-    const appointmentTotal = app.appointment_services?.reduce((serviceSum: number, as: any) => 
-      serviceSum + Number(as.services?.price || 0), 0) || 0;
-    return sum + appointmentTotal;
-  }, 0);
+  const { completedAppointments, totalRevenue } = useMemo(() => {
+    const completed = appointments.filter((app) => app.status === "completed");
+    const revenue = completed.reduce((sum, app) => {
+      const appointmentTotal = app.appointment_services?.reduce((serviceSum: number, as: any) => 
+        serviceSum + Number(as.services?.price || 0), 0) || 0;
+      return sum + appointmentTotal;
+    }, 0);
+    
+    return { completedAppointments: completed, totalRevenue: revenue };
+  }, [appointments]);
 
-  const cancelledAppointments = filteredAppointments.filter((app) => app.status === "cancelled");
+  const cancelledAppointments = useMemo(() => {
+    return filteredAppointments.filter((app) => app.status === "cancelled");
+  }, [filteredAppointments]);
+
+  const pendingCount = useMemo(() => {
+    return appointments.filter((app) => app.status === "pending").length;
+  }, [appointments]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
@@ -526,8 +576,47 @@ const BusinessDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-16 h-16 rounded-lg" />
+              <div>
+                <Skeleton className="h-8 w-48 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+          
+          <Skeleton className="h-24 w-full mb-8" />
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-32 w-full mb-4" />
+              <Skeleton className="h-32 w-full mb-4" />
+              <Skeleton className="h-32 w-full" />
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
@@ -673,9 +762,7 @@ const BusinessDashboard = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {appointments.filter((app) => app.status === "pending").length}
-              </div>
+              <div className="text-2xl font-bold">{pendingCount}</div>
             </CardContent>
           </Card>
 
