@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -54,26 +54,34 @@ const BusinessDashboard = () => {
   const [servicePrice, setServicePrice] = useState("");
   const [serviceImageUrl, setServiceImageUrl] = useState<string | null>(null);
 
+  // Carregar dados iniciais e verificar cache
   useEffect(() => {
     const initDashboard = async () => {
-      // Verificar autenticação
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/auth');
         return;
       }
 
-      // Buscar dados do negócio
-      await fetchBusinessData();
+      // Tentar carregar do cache primeiro
+      const cachedBusiness = sessionStorage.getItem('business_data');
+      if (cachedBusiness) {
+        const parsed = JSON.parse(cachedBusiness);
+        if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // Cache válido por 5 minutos
+          setBusiness(parsed.data);
+          setLoading(false);
+        }
+      }
 
-      // Chamar função para completar agendamentos passados de forma assíncrona (não bloqueia UI)
-      supabase.functions
-        .invoke('complete-appointments')
-        .then(() => console.log('Complete appointments function called successfully'))
-        .catch((error) => console.error('Error calling complete-appointments:', error));
+      await fetchBusinessData();
     };
 
     initDashboard();
+  }, []);
+
+  // Configurar Realtime apenas quando business.id estiver disponível
+  useEffect(() => {
+    if (!business?.id) return;
 
     const appointmentsChannel = supabase
       .channel("business-appointments-changes")
@@ -81,9 +89,8 @@ const BusinessDashboard = () => {
         event: "*", 
         schema: "public", 
         table: "appointments",
-        filter: `business_id=eq.${business?.id}` 
+        filter: `business_id=eq.${business.id}` 
       }, (payload) => {
-        // Update incremental ao invés de recarregar tudo
         if (payload.eventType === 'INSERT') {
           setAppointments(prev => [...prev, payload.new]);
         } else if (payload.eventType === 'UPDATE') {
@@ -100,9 +107,8 @@ const BusinessDashboard = () => {
         event: "*", 
         schema: "public", 
         table: "services",
-        filter: `business_id=eq.${business?.id}`
+        filter: `business_id=eq.${business.id}`
       }, (payload) => {
-        // Update incremental para serviços
         if (payload.eventType === 'INSERT') {
           setServices(prev => [...prev, payload.new]);
         } else if (payload.eventType === 'UPDATE') {
@@ -134,6 +140,12 @@ const BusinessDashboard = () => {
 
       if (businessData) {
         setBusiness(businessData);
+        
+        // Cachear dados do business
+        sessionStorage.setItem('business_data', JSON.stringify({
+          data: businessData,
+          timestamp: Date.now()
+        }));
 
         // Buscar apenas serviços ativos
         const { data: servicesData } = await supabase
@@ -204,7 +216,7 @@ const BusinessDashboard = () => {
       setServiceDescription("");
       setServiceDuration("");
       setServicePrice("");
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error: any) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
     }
@@ -236,7 +248,7 @@ const BusinessDashboard = () => {
       setServiceDuration("");
       setServicePrice("");
       setServiceImageUrl(null);
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error: any) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
     }
@@ -291,7 +303,7 @@ const BusinessDashboard = () => {
       }
       
       toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error) {
       console.error("Error updating appointment:", error);
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o agendamento." });
@@ -321,7 +333,7 @@ const BusinessDashboard = () => {
         .catch((err) => console.error('[Email] Failed to send cancellation notification:', err));
       
       toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error) {
       console.error("Error updating appointment:", error);
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o agendamento." });
@@ -343,8 +355,20 @@ const BusinessDashboard = () => {
     toast({ title: "Link copiado!", description: "O link de agendamento foi copiado para a área de transferência." });
   };
 
-  const handleRefresh = async () => {
+  // Debounce para evitar múltiplas requisições simultâneas
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const handleRefresh = useCallback(async () => {
+    if (debounceTimeoutRef.current) {
+      return; // Já tem um refresh em andamento
+    }
+    
     setRefreshing(true);
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      debounceTimeoutRef.current = null;
+    }, 2000);
+    
     try {
       await fetchBusinessData();
       toast({ title: "Dados atualizados!", description: "Seus dados foram atualizados com sucesso." });
@@ -353,7 +377,7 @@ const BusinessDashboard = () => {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -403,29 +427,39 @@ const BusinessDashboard = () => {
     }
   };
 
-  // Usar useMemo para otimizar cálculos pesados
+  // Otimizar cálculos com Map para lookups O(1)
+  const appointmentsByDate = useMemo(() => {
+    const map = new Map<string, any[]>();
+    appointments.forEach(app => {
+      const date = format(parseISO(app.appointment_date), "yyyy-MM-dd");
+      if (!map.has(date)) map.set(date, []);
+      map.get(date)!.push(app);
+    });
+    return map;
+  }, [appointments]);
+
   const todayAppointments = useMemo(() => {
     const today = formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd");
-    return appointments
-      .filter((app) => format(parseISO(app.appointment_date), "yyyy-MM-dd") === today)
-      .sort((a, b) => {
-        const statusPriority: Record<string, number> = {
-          pending: 1,
-          confirmed: 2,
-          completed: 3,
-          cancelled: 4,
-        };
-        
-        const priorityA = statusPriority[a.status] || 5;
-        const priorityB = statusPriority[b.status] || 5;
-        
-        if (priorityA !== priorityB) {
-          return priorityA - priorityB;
-        }
-        
-        return a.appointment_time.localeCompare(b.appointment_time);
-      });
-  }, [appointments]);
+    const todayApps = appointmentsByDate.get(today) || [];
+    
+    return todayApps.sort((a, b) => {
+      const statusPriority: Record<string, number> = {
+        pending: 1,
+        confirmed: 2,
+        completed: 3,
+        cancelled: 4,
+      };
+      
+      const priorityA = statusPriority[a.status] || 5;
+      const priorityB = statusPriority[b.status] || 5;
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      return a.appointment_time.localeCompare(b.appointment_time);
+    });
+  }, [appointmentsByDate]);
 
   const filteredAppointments = useMemo(() => {
     return appointments
@@ -454,24 +488,36 @@ const BusinessDashboard = () => {
       });
   }, [appointments, dateRange]);
 
-  const { completedAppointments, totalRevenue } = useMemo(() => {
-    const completed = appointments.filter((app) => app.status === "completed");
-    const revenue = completed.reduce((sum, app) => {
-      const appointmentTotal = app.appointment_services?.reduce((serviceSum: number, as: any) => 
-        serviceSum + Number(as.services?.price || 0), 0) || 0;
-      return sum + appointmentTotal;
-    }, 0);
+  const { completedAppointments, totalRevenue, cancelledAppointments, pendingCount } = useMemo(() => {
+    // Usar Set para status checks O(1)
+    const completedSet = new Set<string>();
+    const cancelledSet = new Set<string>();
+    let pending = 0;
+    let revenue = 0;
     
-    return { completedAppointments: completed, totalRevenue: revenue };
-  }, [appointments]);
-
-  const cancelledAppointments = useMemo(() => {
-    return filteredAppointments.filter((app) => app.status === "cancelled");
-  }, [filteredAppointments]);
-
-  const pendingCount = useMemo(() => {
-    return appointments.filter((app) => app.status === "pending").length;
-  }, [appointments]);
+    appointments.forEach(app => {
+      if (app.status === "completed") {
+        completedSet.add(app.id);
+        const appointmentTotal = app.appointment_services?.reduce((sum: number, as: any) => 
+          sum + Number(as.services?.price || 0), 0) || 0;
+        revenue += appointmentTotal;
+      } else if (app.status === "cancelled") {
+        cancelledSet.add(app.id);
+      } else if (app.status === "pending") {
+        pending++;
+      }
+    });
+    
+    const completed = appointments.filter(app => completedSet.has(app.id));
+    const cancelled = filteredAppointments.filter((app) => app.status === "cancelled");
+    
+    return { 
+      completedAppointments: completed, 
+      totalRevenue: revenue,
+      cancelledAppointments: cancelled,
+      pendingCount: pending
+    };
+  }, [appointments, filteredAppointments]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
