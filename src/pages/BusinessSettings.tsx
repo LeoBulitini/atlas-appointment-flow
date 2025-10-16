@@ -92,7 +92,7 @@ export default function BusinessSettings() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<{ id: string; name: string; appointmentCount: number } | null>(null);
-  const [hoursExpanded, setHoursExpanded] = useState(true);
+  const [hoursExpanded, setHoursExpanded] = useState(false);
 
   useEffect(() => {
     fetchBusinessData();
