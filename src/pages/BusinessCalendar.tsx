@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Appointment {
   id: string;
@@ -24,6 +25,7 @@ interface Appointment {
 
 export default function BusinessCalendar() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
@@ -288,10 +290,10 @@ export default function BusinessCalendar() {
         </CardHeader>
         <CardContent>
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsList className={`grid w-full ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} mb-4`}>
               <TabsTrigger value="day">Dia</TabsTrigger>
-              <TabsTrigger value="week">Semana</TabsTrigger>
-              <TabsTrigger value="month">Mês</TabsTrigger>
+              {!isMobile && <TabsTrigger value="week">Semana</TabsTrigger>}
+              {!isMobile && <TabsTrigger value="month">Mês</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="day">
