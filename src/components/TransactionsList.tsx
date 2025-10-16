@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TransactionsListProps {
   businessId: string;
@@ -18,6 +19,7 @@ interface TransactionsListProps {
 
 export function TransactionsList({ businessId, refreshKey, onEdit }: TransactionsListProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -202,40 +204,43 @@ export function TransactionsList({ businessId, refreshKey, onEdit }: Transaction
             filteredTransactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className={`p-4 border rounded-lg ${isMobile ? 'flex flex-col gap-3' : 'flex items-center justify-between'}`}
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">{transaction.description}</span>
-                    <Badge variant={transaction.type === "receita" ? "default" : "secondary"}>
-                      {transaction.type === "receita" ? "Receita" : "Despesa"}
-                    </Badge>
-                  </div>
+                {/* Descrição no topo */}
+                <div className={isMobile ? 'w-full' : 'flex-1'}>
+                  <div className="font-medium mb-2">{transaction.description}</div>
                   <div className="text-sm text-muted-foreground">
                     {transaction.category} • {format(new Date(transaction.transaction_date), "dd/MM/yyyy")}
                     {transaction.payment_method && ` • ${transaction.payment_method}`}
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+
+                {/* Tipo e valor */}
+                <div className={`flex items-center gap-3 ${isMobile ? 'w-full justify-between' : 'gap-4'}`}>
+                  <Badge variant={transaction.type === "receita" ? "default" : "secondary"}>
+                    {transaction.type === "receita" ? "Receita" : "Despesa"}
+                  </Badge>
                   <div className={`text-lg font-bold ${transaction.type === "receita" ? "text-green-600" : "text-red-600"}`}>
                     {transaction.type === "receita" ? "+" : "-"}R$ {Number(transaction.amount).toFixed(2)}
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(transaction)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteClick(transaction)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                </div>
+
+                {/* Botões de editar/excluir */}
+                <div className={`flex gap-2 ${isMobile ? 'w-full justify-end' : ''}`}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onEdit(transaction)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteClick(transaction)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               </div>
             ))
