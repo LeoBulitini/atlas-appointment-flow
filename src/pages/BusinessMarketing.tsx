@@ -73,7 +73,7 @@ const BusinessMarketing = () => {
     }
   };
 
-  const bookingLink = business ? `${window.location.origin}/booking/${business.id}` : "";
+  const bookingLink = business ? (business.slug ? `${window.location.origin}/${business.slug}` : `${window.location.origin}/booking/${business.id}`) : "";
 
   const templates: MessageTemplate[] = [
     {

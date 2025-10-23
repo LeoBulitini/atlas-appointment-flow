@@ -42,6 +42,7 @@ interface Business {
   price_range: string;
   opening_hours: any;
   auto_confirm_appointments?: boolean;
+  auto_redirect_to_calendar?: boolean;
   logo_url?: string;
   payment_methods?: string[];
 }
@@ -969,6 +970,35 @@ export default function BusinessSettings() {
                       <Save className="mr-2 h-4 w-4" />
                       Salvar Métodos
                     </Button>
+                  </div>
+
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <Label>Redirecionamento Automático</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Quando ativado, você será redirecionado automaticamente para o calendário ao abrir o sistema
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={business.auto_redirect_to_calendar || false}
+                        onCheckedChange={async (checked) => {
+                          setLoading(true);
+                          const { error } = await supabase
+                            .from("businesses")
+                            .update({ auto_redirect_to_calendar: checked })
+                            .eq("id", business.id);
+                          
+                          if (error) {
+                            toast({ title: "Erro ao atualizar configuração", variant: "destructive" });
+                          } else {
+                            toast({ title: "Configuração atualizada!" });
+                            fetchBusinessData();
+                          }
+                          setLoading(false);
+                        }}
+                        disabled={loading}
+                      />
+                      <Label>Abrir calendário automaticamente ao iniciar</Label>
+                    </div>
                   </div>
                 </div>
               </CardContent>

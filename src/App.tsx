@@ -189,6 +189,8 @@ const App = () => (
             }
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Rota de slug dinâmica (deve vir antes do catch-all) */}
+          <Route path="/:businessSlug" element={<Booking />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

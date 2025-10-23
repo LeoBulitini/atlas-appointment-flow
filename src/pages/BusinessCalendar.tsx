@@ -132,6 +132,29 @@ export default function BusinessCalendar() {
     const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr);
     
     const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h às 20h
+    
+    // Estado para hora atual (atualiza a cada minuto)
+    const [currentTime, setCurrentTime] = useState(new Date());
+    
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 60000); // Atualiza a cada minuto
+      
+      return () => clearInterval(interval);
+    }, []);
+    
+    // Verificar se a data selecionada é hoje
+    const isToday = format(selectedDate, 'yyyy-MM-dd') === format(toZonedTime(new Date(), timezone), 'yyyy-MM-dd');
+    
+    // Calcular posição da linha vermelha (hora atual)
+    let currentTimePosition = 0;
+    if (isToday) {
+      const now = toZonedTime(new Date(), timezone);
+      const currentHour = now.getHours();
+      const currentMinutes = now.getMinutes();
+      currentTimePosition = ((currentHour - 7) * 64) + (currentMinutes * 64 / 60);
+    }
 
     return (
       <div className="space-y-4">
@@ -152,7 +175,7 @@ export default function BusinessCalendar() {
             {/* Coluna de horários */}
             <div className="bg-muted/50 border-r">
               {hours.map(hour => (
-                <div key={hour} className="h-16 border-b flex items-center justify-center text-sm text-muted-foreground">
+                <div key={hour} className="relative h-16 border-b flex items-center justify-center text-sm text-muted-foreground">
                   {hour.toString().padStart(2, '0')}:00
                 </div>
               ))}
@@ -160,9 +183,25 @@ export default function BusinessCalendar() {
 
             {/* Área de agendamentos */}
             <div className="relative">
+              {/* Linhas de hora e subdivisões de 15 minutos */}
               {hours.map(hour => (
-                <div key={hour} className="h-16 border-b" />
+                <div key={hour} className="relative h-16 border-b">
+                  {/* Linhas tracejadas para 15, 30 e 45 minutos */}
+                  <div className="absolute top-4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                  <div className="absolute top-8 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                  <div className="absolute top-12 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                </div>
               ))}
+              
+              {/* Linha vermelha do horário atual */}
+              {isToday && currentTimePosition >= 0 && currentTimePosition <= (14 * 64) && (
+                <div
+                  className="absolute left-0 right-0 h-0.5 bg-red-500 z-20 pointer-events-none"
+                  style={{ top: `${currentTimePosition}px` }}
+                >
+                  <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
+                </div>
+              )}
               
               {/* Agendamentos posicionados */}
               {dayAppointments.map(apt => {
@@ -179,7 +218,7 @@ export default function BusinessCalendar() {
                 return (
                   <div
                     key={apt.id}
-                    className="absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md"
+                    className="absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10"
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,

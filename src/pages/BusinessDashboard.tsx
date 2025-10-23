@@ -79,6 +79,18 @@ const BusinessDashboard = () => {
     initDashboard();
   }, []);
 
+  // Auto-redirect para calendário se configurado (apenas uma vez por sessão)
+  useEffect(() => {
+    if (!business) return;
+    
+    const hasRedirected = sessionStorage.getItem('has_redirected_to_calendar');
+    
+    if (!hasRedirected && business.auto_redirect_to_calendar) {
+      sessionStorage.setItem('has_redirected_to_calendar', 'true');
+      navigate('/business/calendar');
+    }
+  }, [business, navigate]);
+
   // Configurar Realtime apenas quando business.id estiver disponível
   useEffect(() => {
     if (!business?.id) return;
@@ -132,7 +144,7 @@ const BusinessDashboard = () => {
 
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
-        .select("id, name, logo_url, is_active, view_count")
+        .select("id, name, logo_url, is_active, view_count, slug, auto_redirect_to_calendar")
         .eq("owner_id", user.id)
         .single();
 
@@ -350,7 +362,7 @@ const BusinessDashboard = () => {
   };
 
   const handleCopyShareLink = () => {
-    const link = `${window.location.origin}/booking/${business.id}`;
+    const link = business?.slug ? `${window.location.origin}/${business.slug}` : `${window.location.origin}/booking/${business.id}`;
     navigator.clipboard.writeText(link);
     toast({ title: "Link copiado!", description: "O link de agendamento foi copiado para a área de transferência." });
   };
@@ -711,6 +723,14 @@ const BusinessDashboard = () => {
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Atualizar
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleCopyShareLink}
+              size="sm"
+            >
+              <LinkIcon className="mr-2 h-4 w-4" />
+              Copiar Link
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
