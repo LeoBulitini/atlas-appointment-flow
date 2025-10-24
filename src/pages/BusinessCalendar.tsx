@@ -32,6 +32,7 @@ export default function BusinessCalendar() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     checkAuth();
@@ -42,6 +43,14 @@ export default function BusinessCalendar() {
       fetchAppointments();
     }
   }, [businessId, currentMonth]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -133,24 +142,13 @@ export default function BusinessCalendar() {
     
     const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h às 20h
     
-    // Estado para hora atual (atualiza a cada minuto)
-    const [currentTime, setCurrentTime] = useState(new Date());
-    
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 60000); // Atualiza a cada minuto
-      
-      return () => clearInterval(interval);
-    }, []);
-    
     // Verificar se a data selecionada é hoje
     const isToday = format(selectedDate, 'yyyy-MM-dd') === format(toZonedTime(new Date(), timezone), 'yyyy-MM-dd');
     
     // Calcular posição da linha vermelha (hora atual)
     let currentTimePosition = 0;
     if (isToday) {
-      const now = toZonedTime(new Date(), timezone);
+      const now = toZonedTime(currentTime, timezone);
       const currentHour = now.getHours();
       const currentMinutes = now.getMinutes();
       currentTimePosition = ((currentHour - 7) * 64) + (currentMinutes * 64 / 60);
