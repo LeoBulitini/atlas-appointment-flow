@@ -698,24 +698,24 @@ const BusinessDashboard = () => {
       
       <main className="container mx-auto px-4 py-8">
         {/* Header with Business Logo */}
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="mb-6 flex items-start justify-between gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
             {business?.logo_url && (
               <img 
                 src={business.logo_url} 
                 alt={business.name}
-                className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover"
+                className="w-10 h-10 md:w-16 md:h-16 rounded-lg object-cover flex-shrink-0"
               />
             )}
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold">{business?.name || "Dashboard"}</h1>
+            <div className="min-w-0">
+              <h1 className="text-lg md:text-3xl font-bold truncate">{business?.name || "Dashboard"}</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Eye className="h-4 w-4" />
-                <span className="text-sm">{business?.view_count || 0}</span>
+                <Eye className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="text-xs md:text-sm">{business?.view_count || 0}</span>
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-shrink-0 gap-2 ml-auto">
             <Button 
               variant="outline" 
               onClick={() => window.location.reload()}

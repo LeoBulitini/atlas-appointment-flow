@@ -33,6 +33,7 @@ export default function BusinessCalendar() {
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [openingHours, setOpeningHours] = useState<any>(null);
 
   useEffect(() => {
     checkAuth();
@@ -61,12 +62,13 @@ export default function BusinessCalendar() {
 
     const { data: business } = await supabase
       .from("businesses")
-      .select("id")
+      .select("id, opening_hours")
       .eq("owner_id", user.id)
       .single();
 
     if (business) {
       setBusinessId(business.id);
+      setOpeningHours(business.opening_hours || {});
     }
   };
 
@@ -102,6 +104,18 @@ export default function BusinessCalendar() {
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     return appointments.filter(apt => apt.appointment_date === dateStr);
+  };
+
+  const isHourInactive = (hour: number, dayOfWeek: string) => {
+    if (!openingHours || !openingHours[dayOfWeek]) return true;
+    
+    const daySchedule = openingHours[dayOfWeek];
+    if (!daySchedule.isOpen) return true;
+    
+    const openHour = parseInt(daySchedule.openTime.split(':')[0]);
+    const closeHour = parseInt(daySchedule.closeTime.split(':')[0]);
+    
+    return hour < openHour || hour >= closeHour;
   };
 
   const getStatusColor = (status: string) => {
@@ -140,10 +154,24 @@ export default function BusinessCalendar() {
     const dateStr = format(zonedDate, 'yyyy-MM-dd');
     const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr);
     
-    const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h às 20h
+    const hours = Array.from({ length: 24 }, (_, i) => i); // 0h às 23h
     
     // Verificar se a data selecionada é hoje
     const isToday = format(selectedDate, 'yyyy-MM-dd') === format(toZonedTime(new Date(), timezone), 'yyyy-MM-dd');
+    
+    // Mapear dias da semana em inglês para português
+    const dayOfWeekMap: { [key: string]: string } = {
+      'sunday': 'sunday',
+      'monday': 'monday',
+      'tuesday': 'tuesday',
+      'wednesday': 'wednesday',
+      'thursday': 'thursday',
+      'friday': 'friday',
+      'saturday': 'saturday'
+    };
+    
+    const dayOfWeekEn = format(selectedDate, 'EEEE').toLowerCase();
+    const dayOfWeek = dayOfWeekMap[dayOfWeekEn] || 'monday';
     
     // Calcular posição da linha vermelha (hora atual)
     let currentTimePosition = 0;
@@ -151,7 +179,7 @@ export default function BusinessCalendar() {
       const now = toZonedTime(currentTime, timezone);
       const currentHour = now.getHours();
       const currentMinutes = now.getMinutes();
-      currentTimePosition = ((currentHour - 7) * 64) + (currentMinutes * 64 / 60);
+      currentTimePosition = (currentHour * 64) + (currentMinutes * 64 / 60);
     }
 
     return (
@@ -169,12 +197,23 @@ export default function BusinessCalendar() {
         </div>
 
         <div className="relative border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-[80px_1fr]">
+          <div className="grid grid-cols-[60px_1fr]">
             {/* Coluna de horários */}
             <div className="bg-muted/50 border-r">
               {hours.map(hour => (
-                <div key={hour} className="relative h-16 border-b flex items-center justify-center text-sm text-muted-foreground">
-                  {hour.toString().padStart(2, '0')}:00
+                <div key={hour} className="relative h-16 border-b">
+                  <div className="flex flex-col items-center justify-start pt-1 text-xs text-muted-foreground">
+                    <span>{hour.toString().padStart(2, '0')}:00</span>
+                  </div>
+                  <div className="absolute top-1/4 left-0 right-0 flex justify-center">
+                    <span className="text-[10px] text-muted-foreground/60">:15</span>
+                  </div>
+                  <div className="absolute top-1/2 left-0 right-0 flex justify-center">
+                    <span className="text-[10px] text-muted-foreground/60">:30</span>
+                  </div>
+                  <div className="absolute top-3/4 left-0 right-0 flex justify-center">
+                    <span className="text-[10px] text-muted-foreground/60">:45</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -182,17 +221,29 @@ export default function BusinessCalendar() {
             {/* Área de agendamentos */}
             <div className="relative">
               {/* Linhas de hora e subdivisões de 15 minutos */}
-              {hours.map(hour => (
-                <div key={hour} className="relative h-16 border-b">
-                  {/* Linhas tracejadas para 15, 30 e 45 minutos */}
-                  <div className="absolute top-4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
-                  <div className="absolute top-8 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
-                  <div className="absolute top-12 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
-                </div>
-              ))}
+              {hours.map(hour => {
+                const isInactive = isHourInactive(hour, dayOfWeek);
+                return (
+                  <div key={hour} className="relative h-16 border-b">
+                    {/* Overlay para horário inativo com padrão de riscos */}
+                    {isInactive && (
+                      <div 
+                        className="absolute inset-0 bg-muted/30 z-5"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.05) 10px, rgba(0,0,0,0.05) 20px)'
+                        }}
+                      />
+                    )}
+                    {/* Linhas tracejadas para 15, 30 e 45 minutos */}
+                    <div className="absolute top-1/4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                    <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                    <div className="absolute top-3/4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                  </div>
+                );
+              })}
               
               {/* Linha vermelha do horário atual */}
-              {isToday && currentTimePosition >= 0 && currentTimePosition <= (14 * 64) && (
+              {isToday && currentTimePosition >= 0 && currentTimePosition <= (24 * 64) && (
                 <div
                   className="absolute left-0 right-0 h-0.5 bg-red-500 z-20 pointer-events-none"
                   style={{ top: `${currentTimePosition}px` }}
@@ -206,8 +257,8 @@ export default function BusinessCalendar() {
                 const [hour, minute] = apt.appointment_time.split(':').map(Number);
                 const [endHour, endMinute] = apt.end_time.split(':').map(Number);
                 
-                const startMinutes = (hour - 7) * 60 + minute; // 7h é o início
-                const endMinutes = (endHour - 7) * 60 + endMinute;
+                const startMinutes = hour * 60 + minute;
+                const endMinutes = endHour * 60 + endMinute;
                 const duration = endMinutes - startMinutes;
                 
                 const top = (startMinutes / 60) * 64; // 64px = altura de cada hora
