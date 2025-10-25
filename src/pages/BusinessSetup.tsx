@@ -116,11 +116,11 @@ const BusinessSetup = () => {
 
         toast({
           title: "Sucesso!",
-          description: "Empresa cadastrada com sucesso. Escolha seu plano!",
+          description: "Empresa cadastrada! Você tem 7 dias grátis para testar.",
         });
 
-        // Redirecionar para página de assinatura
-        navigate("/business/subscription");
+        // Redirecionar para dashboard
+        navigate("/dashboard/business");
         return;
       }
 
