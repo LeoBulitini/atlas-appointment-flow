@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { useMemo, useCallback } from "react";
 
 interface Appointment {
   id: string;
