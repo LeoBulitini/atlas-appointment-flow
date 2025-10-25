@@ -24,6 +24,8 @@ import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { ContactPicker } from "@/components/ContactPicker";
 
 const BRAZIL_TZ = 'America/Sao_Paulo';
 
@@ -322,6 +324,40 @@ const BusinessDashboard = () => {
     }
   };
 
+  const handleReadyForService = async (appointmentId: string) => {
+    try {
+      toast({ title: "Enviando notificação...", description: "Informando o cliente que você está pronto." });
+      
+      const { error } = await supabase.functions.invoke('send-appointment-email', {
+        body: {
+          appointmentId,
+          type: 'ready_for_service'
+        }
+      });
+      
+      if (error) {
+        console.error('[Email] Error sending ready notification:', error);
+        toast({ 
+          title: "Erro", 
+          description: "Não foi possível enviar a notificação. Tente novamente.", 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ 
+          title: "Notificação enviada!", 
+          description: "O cliente foi avisado que você está pronto." 
+        });
+      }
+    } catch (error: any) {
+      console.error('[Email] Failed to send ready notification:', error);
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível enviar a notificação. Tente novamente.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const handleCancelAppointment = async () => {
     if (!selectedAppointmentId) return;
     
@@ -602,6 +638,27 @@ const BusinessDashboard = () => {
           )}
           {(appointment.status === "pending" || appointment.status === "confirmed") && (
             <>
+              {/* Botão "Estou Pronto" - aparece 15 minutos antes do horário */}
+              {(() => {
+                const now = toZonedTime(new Date(), BRAZIL_TZ);
+                const appointmentDateTime = toZonedTime(
+                  new Date(`${appointment.appointment_date}T${appointment.appointment_time}`),
+                  BRAZIL_TZ
+                );
+                const fifteenMinutesBefore = new Date(appointmentDateTime.getTime() - 15 * 60 * 1000);
+                const isToday = format(appointmentDateTime, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+                const canShowReadyButton = isToday && now >= fifteenMinutesBefore && now < appointmentDateTime;
+                
+                return canShowReadyButton && (
+                  <Button
+                    size="sm"
+                    className="min-h-10 bg-green-600 hover:bg-green-700"
+                    onClick={() => handleReadyForService(appointment.id)}
+                  >
+                    ✓ Estou Pronto
+                  </Button>
+                );
+              })()}
               <Button
                 size="sm"
                 className="min-h-10"
@@ -633,50 +690,7 @@ const BusinessDashboard = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="mb-6 flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Skeleton className="w-16 h-16 rounded-lg" />
-              <div>
-                <Skeleton className="h-8 w-48 mb-2" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            </div>
-            <Skeleton className="h-10 w-32" />
-          </div>
-          
-          <Skeleton className="h-24 w-full mb-8" />
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-4 w-4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-16" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-48" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-32 w-full mb-4" />
-              <Skeleton className="h-32 w-full mb-4" />
-              <Skeleton className="h-32 w-full" />
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!business) {

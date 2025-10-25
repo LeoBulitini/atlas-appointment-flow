@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { maskPhoneInput, validatePhoneNumber } from "@/lib/phone-utils";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { ContactPicker } from "@/components/ContactPicker";
 
 interface Client {
   id: string;
@@ -567,7 +569,7 @@ export default function BusinessClients() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   return (
@@ -692,6 +694,15 @@ export default function BusinessClients() {
                       maxLength={19}
                     />
                   </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <ContactPicker 
+                    onSelect={(contact) => {
+                      setQuickBookingName(contact.name);
+                      setQuickBookingPhone(contact.phone);
+                    }}
+                  />
                 </div>
 
                 <div>

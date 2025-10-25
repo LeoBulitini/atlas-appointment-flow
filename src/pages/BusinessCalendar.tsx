@@ -10,6 +10,8 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { useMemo, useCallback } from "react";
 
 interface Appointment {
   id: string;
@@ -368,11 +370,7 @@ export default function BusinessCalendar() {
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
