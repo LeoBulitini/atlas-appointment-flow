@@ -230,6 +230,14 @@ const BusinessSubscription = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-12 px-4">
       <div className="max-w-6xl mx-auto">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate("/dashboard/business")} 
+          className="mb-6"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar ao Dashboard
+        </Button>
         
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Escolha seu Plano ATLAS</h1>

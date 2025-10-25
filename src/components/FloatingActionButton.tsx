@@ -4,6 +4,8 @@ import { Plus, Calendar, Clock, CreditCard, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface FloatingActionButtonProps {
   onQuickBooking?: () => void;
@@ -12,7 +14,9 @@ interface FloatingActionButtonProps {
 export default function FloatingActionButton({ onQuickBooking }: FloatingActionButtonProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
 
   if (!isMobile) return null;
 
@@ -28,9 +32,40 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
     navigate("/business/settings?tab=hours");
   };
 
-  const handleSubscriptionClick = () => {
-    setShowMenu(false);
-    navigate("/business/subscription");
+  const handleSubscriptionClick = async () => {
+    try {
+      setLoadingPortal(true);
+      setShowMenu(false);
+      
+      // Abrir janela imediatamente no clique (iOS Safari)
+      const portalWindow = window.open('about:blank', '_blank');
+      
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        // Atualizar URL da janela já aberta
+        if (portalWindow) {
+          portalWindow.location.href = data.url;
+        } else {
+          // Fallback se popup foi bloqueado
+          window.location.href = data.url;
+        }
+      } else {
+        portalWindow?.close();
+        throw new Error("URL do portal não foi retornada");
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível abrir o portal de gerenciamento. Verifique se você possui uma assinatura ativa.",
+      });
+    } finally {
+      setLoadingPortal(false);
+    }
   };
 
   const handleCalendarClick = () => {
@@ -97,6 +132,7 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
             </Button>
             <Button
               onClick={handleSubscriptionClick}
+              disabled={loadingPortal}
               className="w-full justify-start text-left h-auto py-4"
               variant="outline"
             >
@@ -104,7 +140,7 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
               <div>
                 <div className="font-semibold">Assinatura</div>
                 <div className="text-sm text-muted-foreground">
-                  Gerenciar plano e pagamento
+                  {loadingPortal ? "Abrindo portal..." : "Gerenciar plano e pagamento"}
                 </div>
               </div>
             </Button>

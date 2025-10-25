@@ -107,15 +107,25 @@ export default function BusinessCalendar() {
   };
 
   const isHourInactive = (hour: number, dayOfWeek: string) => {
-    if (!openingHours || !openingHours[dayOfWeek]) return true;
+    if (!openingHours) return true;
     
     const daySchedule = openingHours[dayOfWeek];
-    if (!daySchedule.isOpen) return true;
+    if (!daySchedule || !daySchedule.isOpen) return true;
     
-    const openHour = parseInt(daySchedule.openTime.split(':')[0]);
-    const closeHour = parseInt(daySchedule.closeTime.split(':')[0]);
-    
-    return hour < openHour || hour >= closeHour;
+    try {
+      const openTime = daySchedule.openTime;
+      const closeTime = daySchedule.closeTime;
+      
+      if (!openTime || !closeTime) return true;
+      
+      const openHour = parseInt(openTime.split(':')[0]);
+      const closeHour = parseInt(closeTime.split(':')[0]);
+      
+      return hour < openHour || hour >= closeHour;
+    } catch (error) {
+      console.error('Error checking hour inactive:', error);
+      return true;
+    }
   };
 
   const getStatusColor = (status: string) => {

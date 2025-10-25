@@ -715,28 +715,30 @@ const BusinessDashboard = () => {
               </div>
             </div>
           </div>
-          <div className="flex flex-shrink-0 gap-2 ml-auto">
+          <div className="flex items-center gap-1 md:gap-2 ml-auto">
             <Button 
               variant="outline" 
               onClick={() => window.location.reload()}
               size="sm"
+              className="flex-shrink-0 px-2 md:px-4"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Atualizar
+              <RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden md:inline ml-1 md:ml-2">Atualizar</span>
             </Button>
             <Button 
               variant="outline" 
               onClick={handleCopyShareLink}
               size="sm"
+              className="flex-shrink-0 px-2 md:px-4"
             >
-              <LinkIcon className="mr-2 h-4 w-4" />
-              Copiar Link
+              <LinkIcon className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden md:inline ml-1 md:ml-2">Copiar Link</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Menu
+                <Button variant="outline" size="sm" className="flex-shrink-0 px-2 md:px-4">
+                  <Settings className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden md:inline ml-1 md:ml-2">Menu</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
