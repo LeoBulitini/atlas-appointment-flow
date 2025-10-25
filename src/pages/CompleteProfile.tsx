@@ -18,12 +18,6 @@ const CompleteProfile = () => {
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
 
-  const getMinBirthDate = () => {
-    const today = new Date();
-    const minDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
-    return minDate.toISOString().split('T')[0];
-  };
-
   useEffect(() => {
     checkProfile();
   }, []);
@@ -155,7 +149,7 @@ const CompleteProfile = () => {
                 onChange={(e) => setBirthDate(e.target.value)}
                 required
                 max={new Date().toISOString().split('T')[0]}
-                min={getMinBirthDate()}
+                min="1900-01-01"
               />
             </div>
             
