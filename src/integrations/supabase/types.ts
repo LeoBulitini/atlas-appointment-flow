@@ -685,6 +685,135 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notification_logs: {
+        Row: {
+          body: string
+          data: Json | null
+          id: string
+          notification_type: string
+          sent_at: string | null
+          success: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          data?: Json | null
+          id?: string
+          notification_type: string
+          sent_at?: string | null
+          success: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          data?: Json | null
+          id?: string
+          notification_type?: string
+          sent_at?: string | null
+          success?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_notification_preferences: {
+        Row: {
+          appointment_cancelled: boolean | null
+          appointment_changes: boolean | null
+          appointment_completed: boolean | null
+          appointment_confirmed: boolean | null
+          appointment_created: boolean | null
+          appointment_reminder: boolean | null
+          appointment_rescheduled: boolean | null
+          birthday_message: boolean | null
+          created_at: string | null
+          financial_alerts: boolean | null
+          id: string
+          loyalty_updates: boolean | null
+          marketing_messages: boolean | null
+          new_appointment: boolean | null
+          new_review: boolean | null
+          stock_alerts: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          appointment_cancelled?: boolean | null
+          appointment_changes?: boolean | null
+          appointment_completed?: boolean | null
+          appointment_confirmed?: boolean | null
+          appointment_created?: boolean | null
+          appointment_reminder?: boolean | null
+          appointment_rescheduled?: boolean | null
+          birthday_message?: boolean | null
+          created_at?: string | null
+          financial_alerts?: boolean | null
+          id?: string
+          loyalty_updates?: boolean | null
+          marketing_messages?: boolean | null
+          new_appointment?: boolean | null
+          new_review?: boolean | null
+          stock_alerts?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          appointment_cancelled?: boolean | null
+          appointment_changes?: boolean | null
+          appointment_completed?: boolean | null
+          appointment_confirmed?: boolean | null
+          appointment_created?: boolean | null
+          appointment_reminder?: boolean | null
+          appointment_rescheduled?: boolean | null
+          birthday_message?: boolean | null
+          created_at?: string | null
+          financial_alerts?: boolean | null
+          id?: string
+          loyalty_updates?: boolean | null
+          marketing_messages?: boolean | null
+          new_appointment?: boolean | null
+          new_review?: boolean | null
+          stock_alerts?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string | null
+          device_type: string
+          id: string
+          is_active: boolean | null
+          subscription: Json
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_type: string
+          id?: string
+          is_active?: boolean | null
+          subscription: Json
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean | null
+          subscription?: Json
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           appointment_id: string | null
