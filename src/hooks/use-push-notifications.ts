@@ -103,18 +103,37 @@ export const usePushNotifications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Limpar qualquer subscription antiga primeiro
+      // Verificar se já existe subscription no banco ANTES de limpar
+      const { data: existingDbSubs } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      // Se já existe subscription ativa no banco E no navegador, retornar sucesso
       const registration = await navigator.serviceWorker.ready;
-      const existingSubscription = await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        await existingSubscription.unsubscribe();
+      const existingBrowserSub = await registration.pushManager.getSubscription();
+      
+      if (existingDbSubs && existingDbSubs.length > 0 && existingBrowserSub) {
+        console.log('[Push] Already subscribed');
+        setIsSubscribed(true);
+        return true;
+      }
+
+      // Limpar subscription do navegador se existir
+      if (existingBrowserSub) {
+        console.log('[Push] Cleaning up old browser subscription');
+        await existingBrowserSub.unsubscribe();
       }
 
       // Limpar subscriptions antigas do banco
-      await supabase
-        .from('push_subscriptions')
-        .delete()
-        .eq('user_id', user.id);
+      if (existingDbSubs && existingDbSubs.length > 0) {
+        console.log('[Push] Cleaning up old DB subscriptions');
+        await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('user_id', user.id);
+      }
 
       // Criar nova subscription
       const subscription = await registration.pushManager.subscribe({
@@ -153,8 +172,13 @@ export const usePushNotifications = () => {
       // Mensagem de erro mais específica
       if (error.message?.includes('duplicate')) {
         toast.error('Já existe uma inscrição ativa. Tente desativar e ativar novamente.');
+      } else if (error.code === 'PGRST301') {
+        // Erro de unique constraint
+        toast.info('Notificações já estão ativas.');
+        setIsSubscribed(true);
+        return true;
       } else {
-        toast.error('Erro ao ativar notificações');
+        toast.error('Erro ao ativar notificações. Tente novamente.');
       }
       
       return false;

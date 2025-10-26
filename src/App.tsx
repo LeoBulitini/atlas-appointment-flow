@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { InstallPWA } from "./components/InstallPWA";
+import { PushNotificationManager } from "./components/PushNotificationManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CompleteProfile from "./pages/CompleteProfile";
@@ -37,6 +38,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <InstallPWA />
+        <PushNotificationManager />
         <BrowserRouter>
           <Routes>
           <Route path="/" element={<Index />} />
