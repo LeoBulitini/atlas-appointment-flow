@@ -6,11 +6,15 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Star, DollarSign, RefreshCw, LogOut, Gift } from "lucide-react";
+import { Calendar, Clock, Star, DollarSign, RefreshCw, LogOut, Gift, Bell, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewDialog } from "@/components/ReviewDialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
 import { ClientLoyaltyCard } from "@/components/ClientLoyaltyCard";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Appointment {
   id: string;
@@ -40,6 +44,7 @@ const ClientDashboard = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [reviewedAppointments, setReviewedAppointments] = useState<Set<string>>(new Set());
+  const pushNotifications = usePushNotifications();
 
   useEffect(() => {
     fetchUserData();
@@ -276,6 +281,59 @@ const ClientDashboard = () => {
         </div>
 
         <ClientLoyaltyCard userId={profile?.id || ""} />
+
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Notificações Push
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pushNotifications.isSupported ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Notificações Push</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {pushNotifications.isSubscribed 
+                        ? 'Você receberá notificações sobre seus agendamentos e atualizações' 
+                        : 'Ative para receber lembretes e notificações importantes'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={pushNotifications.isSubscribed}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        pushNotifications.subscribe();
+                      } else {
+                        pushNotifications.unsubscribe();
+                      }
+                    }}
+                    disabled={pushNotifications.loading}
+                  />
+                </div>
+
+                {pushNotifications.isSubscribed && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/notification-preferences')}
+                  >
+                    Gerenciar Preferências
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Notificações push não são suportadas neste navegador
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader><CardTitle>Meus Agendamentos</CardTitle></CardHeader>

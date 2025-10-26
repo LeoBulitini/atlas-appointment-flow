@@ -27,6 +27,9 @@ verify_jwt = true
 [functions.handle-stripe-webhook]
 verify_jwt = false
 
+[functions.send-push-notification]
+verify_jwt = false
+
 [edge-runtime]
 policy = "per_worker"
 

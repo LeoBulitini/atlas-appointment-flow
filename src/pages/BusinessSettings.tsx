@@ -12,10 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Edit, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit, ChevronDown, Bell, AlertCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SpecialHoursManager } from "@/components/SpecialHoursManager";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Service {
   id: string;
@@ -94,6 +96,7 @@ export default function BusinessSettings() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<{ id: string; name: string; appointmentCount: number } | null>(null);
   const [hoursExpanded, setHoursExpanded] = useState(false);
+  const pushNotifications = usePushNotifications();
 
   useEffect(() => {
     fetchBusinessData();
@@ -857,6 +860,52 @@ export default function BusinessSettings() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
+                  {/* Push Notifications */}
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Bell className="h-5 w-5" />
+                        <Label>Notificações Push</Label>
+                      </div>
+                      <Switch
+                        checked={pushNotifications.isSubscribed}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            pushNotifications.subscribe();
+                          } else {
+                            pushNotifications.unsubscribe();
+                          }
+                        }}
+                        disabled={!pushNotifications.isSupported || pushNotifications.loading}
+                      />
+                    </div>
+                    {pushNotifications.isSupported ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {pushNotifications.isSubscribed 
+                            ? 'Você receberá notificações sobre novos agendamentos e atualizações' 
+                            : 'Ative para receber notificações importantes'}
+                        </p>
+                        {pushNotifications.isSubscribed && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate('/notification-preferences')}
+                          >
+                            Gerenciar Preferências
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Notificações push não são suportadas neste navegador
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="space-y-0.5">
                       <Label>Confirmação Automática de Agendamentos</Label>

@@ -23,6 +23,7 @@ import BusinessLoyalty from "./pages/BusinessLoyalty";
 import BusinessSubscription from "./pages/BusinessSubscription";
 import Booking from "./pages/Booking";
 import NotFound from "./pages/NotFound";
+import NotificationPreferences from "./pages/NotificationPreferences";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SubscriptionGuard from "./components/SubscriptionGuard";
 import BusinessLayout from "./components/BusinessLayout";
@@ -55,6 +56,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="client">
                 <ClientDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notification-preferences"
+            element={
+              <ProtectedRoute>
+                <NotificationPreferences />
               </ProtectedRoute>
             }
           />
