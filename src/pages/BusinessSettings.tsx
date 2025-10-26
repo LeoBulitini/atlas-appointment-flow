@@ -12,10 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Edit, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SpecialHoursManager } from "@/components/SpecialHoursManager";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Service {
   id: string;
@@ -42,7 +41,6 @@ interface Business {
   price_range: string;
   opening_hours: any;
   auto_confirm_appointments?: boolean;
-  auto_redirect_to_calendar?: boolean;
   logo_url?: string;
   payment_methods?: string[];
 }
@@ -93,7 +91,6 @@ export default function BusinessSettings() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<{ id: string; name: string; appointmentCount: number } | null>(null);
-  const [hoursExpanded, setHoursExpanded] = useState(false);
 
   useEffect(() => {
     fetchBusinessData();
@@ -581,23 +578,12 @@ export default function BusinessSettings() {
 
           <TabsContent value="hours">
             <Card>
-              <Collapsible open={hoursExpanded} onOpenChange={setHoursExpanded}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Horário de Funcionamento</CardTitle>
-                      <CardDescription>Configure os dias e horários de atendimento</CardDescription>
-                    </div>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${hoursExpanded ? '' : 'rotate-180'}`} />
-                      </Button>
-                    </CollapsibleTrigger>
-                  </div>
-                </CardHeader>
-                <CollapsibleContent>
-                  <CardContent className="space-y-6">
-                    {DAYS.map((day) => (
+              <CardHeader>
+                <CardTitle>Horário de Funcionamento</CardTitle>
+                <CardDescription>Configure os dias e horários de atendimento</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {DAYS.map((day) => (
                   <div key={day} className="space-y-4 p-4 border rounded-lg">
                     <div className="flex items-center justify-between">
                       <Label className="text-base font-semibold">{DAY_NAMES[day]}</Label>
@@ -707,19 +693,15 @@ export default function BusinessSettings() {
                   <Save className="mr-2 h-4 w-4" />
                   Salvar Horários
                 </Button>
+
+                <div className="mt-8 pt-6 border-t">
+                  <h3 className="text-lg font-semibold mb-4">Dias Específicos</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Configure horários especiais para datas específicas (feriados, eventos, etc.)
+                  </p>
+                  {business?.id && <SpecialHoursManager businessId={business.id} />}
+                </div>
               </CardContent>
-                </CollapsibleContent>
-                
-                <CardContent className="pt-0">
-                  <div className="mt-6 pt-6 border-t">
-                    <h3 className="text-lg font-semibold mb-4">Dias Específicos</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Configure horários especiais para datas específicas (feriados, eventos, etc.)
-                    </p>
-                    {business?.id && <SpecialHoursManager businessId={business.id} />}
-                  </div>
-                </CardContent>
-              </Collapsible>
             </Card>
           </TabsContent>
 
@@ -970,35 +952,6 @@ export default function BusinessSettings() {
                       <Save className="mr-2 h-4 w-4" />
                       Salvar Métodos
                     </Button>
-                  </div>
-
-                  <div className="space-y-2 p-4 border rounded-lg">
-                    <Label>Redirecionamento Automático</Label>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Quando ativado, você será redirecionado automaticamente para o calendário ao abrir o sistema
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={business.auto_redirect_to_calendar || false}
-                        onCheckedChange={async (checked) => {
-                          setLoading(true);
-                          const { error } = await supabase
-                            .from("businesses")
-                            .update({ auto_redirect_to_calendar: checked })
-                            .eq("id", business.id);
-                          
-                          if (error) {
-                            toast({ title: "Erro ao atualizar configuração", variant: "destructive" });
-                          } else {
-                            toast({ title: "Configuração atualizada!" });
-                            fetchBusinessData();
-                          }
-                          setLoading(false);
-                        }}
-                        disabled={loading}
-                      />
-                      <Label>Abrir calendário automaticamente ao iniciar</Label>
-                    </div>
                   </div>
                 </div>
               </CardContent>

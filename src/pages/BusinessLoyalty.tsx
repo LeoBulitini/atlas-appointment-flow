@@ -8,7 +8,6 @@ import { ArrowLeft } from "lucide-react";
 import { LoyaltyConfig } from "@/components/LoyaltyConfig";
 import { LoyaltyBalances } from "@/components/LoyaltyBalances";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
 const BusinessLoyalty = () => {
   const navigate = useNavigate();
@@ -49,7 +48,11 @@ const BusinessLoyalty = () => {
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   return (

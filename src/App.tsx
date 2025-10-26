@@ -70,16 +70,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
-  <Route
-    path="/business/subscription"
-    element={
-      <ProtectedRoute requiredUserType="business">
-        <BusinessLayout>
-          <BusinessSubscription />
-        </BusinessLayout>
-      </ProtectedRoute>
-    }
-  />
+          <Route
+            path="/business/subscription"
+            element={
+              <ProtectedRoute requiredUserType="business">
+                <BusinessSubscription />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/business/settings"
             element={
@@ -189,8 +187,6 @@ const App = () => (
             }
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          {/* Rota de slug dinâmica (deve vir antes do catch-all) */}
-          <Route path="/:businessSlug" element={<Booking />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

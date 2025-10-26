@@ -25,7 +25,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown } from "lucide-react";
 import { MessageTemplateDialog } from "@/components/MessageTemplateDialog";
 import { hasRequiredFields } from "@/lib/marketing-utils";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
 interface MessageTemplate {
   id: string;
@@ -74,7 +73,7 @@ const BusinessMarketing = () => {
     }
   };
 
-  const bookingLink = business ? (business.slug ? `${window.location.origin}/${business.slug}` : `${window.location.origin}/booking/${business.id}`) : "";
+  const bookingLink = business ? `${window.location.origin}/booking/${business.id}` : "";
 
   const templates: MessageTemplate[] = [
     {
@@ -269,7 +268,11 @@ Me chama que vou te contar! 💝`,
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (

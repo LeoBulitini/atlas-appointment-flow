@@ -173,7 +173,7 @@ interface PortfolioItem {
 }
 
 const Booking = () => {
-  const { businessId, businessSlug } = useParams<{ businessId?: string; businessSlug?: string }>();
+  const { businessId } = useParams<{ businessId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -196,22 +196,22 @@ const Booking = () => {
   const [useRedemption, setUseRedemption] = useState(false);
 
   useEffect(() => {
-    if (businessId || businessSlug) {
+    if (businessId) {
       fetchBusinessAndServices();
       fetchLoyaltyData();
     }
-  }, [businessId, businessSlug]);
+  }, [businessId]);
 
   const fetchLoyaltyData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Buscar programa de fidelidade ativo (usando business.id, não o parâmetro)
+      // Buscar programa de fidelidade ativo
       const { data: program } = await supabase
         .from("loyalty_programs")
         .select("*")
-        .eq("business_id", business?.id || businessId)
+        .eq("business_id", businessId)
         .eq("is_active", true)
         .maybeSingle();
 
@@ -222,7 +222,7 @@ const Booking = () => {
         const { data: balance } = await supabase
           .from("loyalty_balances")
           .select("*")
-          .eq("business_id", business?.id || businessId)
+          .eq("business_id", businessId)
           .eq("client_id", user.id)
           .maybeSingle();
 
@@ -265,7 +265,7 @@ const Booking = () => {
 
   // Real-time updates: refresh available slots when new appointments are made
   useEffect(() => {
-    if (!business?.id) return;
+    if (!businessId) return;
 
     const channel = supabase
       .channel('appointments-realtime')
@@ -275,7 +275,7 @@ const Booking = () => {
           event: 'INSERT',
           schema: 'public',
           table: 'appointments',
-          filter: `business_id=eq.${business.id}`
+          filter: `business_id=eq.${businessId}`
         },
         () => {
           // Reload available slots when someone books
@@ -289,40 +289,24 @@ const Booking = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [business?.id, selectedDate]);
+  }, [businessId, selectedDate, business]);
 
   const fetchBusinessAndServices = async () => {
     try {
-      let businessQuery = supabase
+      const { data: businessData, error: businessError } = await supabase
         .from("businesses")
         .select("*")
-        .eq("is_active", true);
-
-      // Se tiver slug, buscar por slug; senão buscar por ID
-      if (businessSlug) {
-        businessQuery = businessQuery.eq("slug", businessSlug);
-      } else if (businessId) {
-        businessQuery = businessQuery.eq("id", businessId);
-      } else {
-        // Se não tiver nem slug nem ID, redirecionar para 404
-        navigate("/404");
-        return;
-      }
-
-      const { data: businessData, error: businessError } = await businessQuery.single();
+        .eq("id", businessId)
+        .eq("is_active", true)
+        .single();
 
       if (businessError) throw businessError;
       setBusiness(businessData);
 
-      // Atualizar view count
-      if (businessData) {
-        await supabase.rpc('increment_business_views', { business_uuid: businessData.id });
-      }
-
       const { data: servicesData, error: servicesError } = await supabase
         .from("services")
         .select("*")
-        .eq("business_id", businessData.id)
+        .eq("business_id", businessId)
         .eq("is_active", true)
         .eq("is_public", true);
 
@@ -332,7 +316,7 @@ const Booking = () => {
       const { data: portfolioData } = await supabase
         .from("business_portfolio")
         .select("media_type, media_data")
-        .eq("business_id", businessData.id)
+        .eq("business_id", businessId)
         .order("display_order", { ascending: true });
 
       setPortfolio(portfolioData || []);
@@ -341,7 +325,7 @@ const Booking = () => {
       const { data: specialHoursData } = await supabase
         .from("business_special_hours")
         .select("*")
-        .eq("business_id", businessData.id);
+        .eq("business_id", businessId);
 
       setSpecialHours(specialHoursData || []);
     } catch (error: any) {

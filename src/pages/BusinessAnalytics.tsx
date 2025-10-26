@@ -7,7 +7,6 @@ import { ArrowLeft, DollarSign, Users, TrendingUp, Clock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
 interface AnalyticsData {
   totalClients: number;
@@ -151,7 +150,11 @@ export default function BusinessAnalytics() {
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
   }
 
   return (

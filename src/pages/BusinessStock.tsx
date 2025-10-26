@@ -13,7 +13,6 @@ import { StockReports } from "@/components/StockReports";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
 const BusinessStock = () => {
   const navigate = useNavigate();
@@ -81,7 +80,11 @@ const BusinessStock = () => {
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   return (
