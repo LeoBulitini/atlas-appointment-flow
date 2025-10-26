@@ -147,6 +147,19 @@ const ClientDashboard = () => {
 
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
+      // Buscar dados do agendamento antes de cancelar
+      const { data: appointmentData } = await supabase
+        .from("appointments")
+        .select(`
+          *,
+          businesses (id, name),
+          appointment_services (
+            services (name)
+          )
+        `)
+        .eq("id", appointmentId)
+        .single();
+
       const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", appointmentId);
       if (error) throw error;
       
@@ -164,6 +177,34 @@ const ClientDashboard = () => {
           }
         })
         .catch((err) => console.error('[Email] Failed to send cancellation notification:', err));
+
+      // Send push notification to business owner
+      if (appointmentData?.business_id) {
+        const serviceNames = appointmentData.appointment_services
+          ?.map((as: any) => as.services.name)
+          .join(", ") || "Serviço";
+        
+        // Buscar o owner do negócio
+        const { data: businessData } = await supabase
+          .from("businesses")
+          .select("owner_id")
+          .eq("id", appointmentData.business_id)
+          .single();
+
+        if (businessData?.owner_id) {
+          supabase.functions
+            .invoke('send-push-notification', {
+              body: {
+                userId: businessData.owner_id,
+                title: '❌ Agendamento Cancelado',
+                body: `Cliente cancelou agendamento de ${serviceNames}`,
+                notificationType: 'business_appointment_cancelled',
+                data: { appointmentId }
+              }
+            })
+            .catch((err) => console.error('[Push] Failed to send notification:', err));
+        }
+      }
       
       toast({ title: "Agendamento cancelado", description: "Seu agendamento foi cancelado com sucesso." });
       fetchAppointments();
