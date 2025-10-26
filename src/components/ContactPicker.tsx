@@ -32,9 +32,13 @@ export function ContactPicker({ onSelect }: ContactPickerProps) {
 
   useEffect(() => {
     // Verificar se a API de Contatos está disponível
-    if ('contacts' in navigator && 'ContactsManager' in window) {
-      setIsSupported(true);
-    }
+    // A Contact Picker API só funciona em alguns navegadores (Chrome/Edge Android)
+    const checkSupport = () => {
+      if ('contacts' in navigator && navigator.contacts) {
+        setIsSupported(true);
+      }
+    };
+    checkSupport();
   }, []);
 
   useEffect(() => {
@@ -99,7 +103,7 @@ export function ContactPicker({ onSelect }: ContactPickerProps) {
         type="button"
         variant="outline"
         onClick={() => {
-          toast.info("Acesso a contatos não disponível neste navegador");
+          toast.info("Esta funcionalidade só está disponível em navegadores Chrome/Edge no Android");
         }}
         disabled
       >
