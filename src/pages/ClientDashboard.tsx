@@ -198,7 +198,7 @@ const ClientDashboard = () => {
                 userId: businessData.owner_id,
                 title: '❌ Agendamento Cancelado',
                 body: `Cliente cancelou agendamento de ${serviceNames}`,
-                notificationType: 'business_appointment_cancelled',
+                notificationType: 'appointment_changes',
                 data: { appointmentId }
               }
             })

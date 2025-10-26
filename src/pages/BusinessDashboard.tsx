@@ -285,6 +285,19 @@ const BusinessDashboard = () => {
       
       // Send email notification (don't block on failure)
       if (status === "confirmed") {
+        // Buscar dados do agendamento
+        const { data: appointmentData } = await supabase
+          .from("appointments")
+          .select(`
+            *,
+            profiles!appointments_client_id_fkey (full_name),
+            appointment_services (
+              services (name)
+            )
+          `)
+          .eq("id", appointmentId)
+          .single();
+
         supabase.functions
           .invoke('send-appointment-email', {
             body: {
@@ -298,9 +311,41 @@ const BusinessDashboard = () => {
             }
           })
           .catch((err) => console.error('[Email] Failed to send confirmation notification:', err));
+
+        // Send push notification to client
+        if (appointmentData?.client_id) {
+          const serviceNames = appointmentData.appointment_services
+            ?.map((as: any) => as.services.name)
+            .join(", ") || "Serviço";
+          
+          supabase.functions
+            .invoke('send-push-notification', {
+              body: {
+                userId: appointmentData.client_id,
+                title: '✅ Agendamento Confirmado',
+                body: `Seu agendamento de ${serviceNames} foi confirmado!`,
+                notificationType: 'appointment_confirmed',
+                data: { appointmentId }
+              }
+            })
+            .catch((err) => console.error('[Push] Failed to send notification:', err));
+        }
       }
       
       if (status === "completed") {
+        // Buscar dados do agendamento
+        const { data: appointmentData } = await supabase
+          .from("appointments")
+          .select(`
+            *,
+            profiles!appointments_client_id_fkey (full_name),
+            appointment_services (
+              services (name)
+            )
+          `)
+          .eq("id", appointmentId)
+          .single();
+
         supabase.functions
           .invoke('send-appointment-email', {
             body: {
@@ -314,6 +359,25 @@ const BusinessDashboard = () => {
             }
           })
           .catch((err) => console.error('[Email] Failed to send completion notification:', err));
+
+        // Send push notification to client
+        if (appointmentData?.client_id) {
+          const serviceNames = appointmentData.appointment_services
+            ?.map((as: any) => as.services.name)
+            .join(", ") || "Serviço";
+          
+          supabase.functions
+            .invoke('send-push-notification', {
+              body: {
+                userId: appointmentData.client_id,
+                title: '🎉 Serviço Concluído',
+                body: `Seu serviço de ${serviceNames} foi concluído! Que tal deixar uma avaliação?`,
+                notificationType: 'appointment_completed',
+                data: { appointmentId }
+              }
+            })
+            .catch((err) => console.error('[Push] Failed to send notification:', err));
+        }
       }
       
       toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });

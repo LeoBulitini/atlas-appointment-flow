@@ -31,11 +31,42 @@ export const usePushNotifications = () => {
     if (!isSupported) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Verificar subscription no navegador
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
+      const browserSubscription = await registration.pushManager.getSubscription();
+
+      // Verificar subscriptions no banco
+      const { data: dbSubscriptions } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      // Se tem no navegador mas não no banco, está inconsistente
+      if (browserSubscription && (!dbSubscriptions || dbSubscriptions.length === 0)) {
+        console.log('[Push] Inconsistent state: browser has subscription but DB does not');
+        setIsSubscribed(false);
+        return;
+      }
+
+      // Se não tem no navegador mas tem no banco, fazer cleanup
+      if (!browserSubscription && dbSubscriptions && dbSubscriptions.length > 0) {
+        console.log('[Push] Cleaning up orphaned DB subscriptions');
+        await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('user_id', user.id);
+        setIsSubscribed(false);
+        return;
+      }
+
+      setIsSubscribed(!!browserSubscription);
     } catch (error) {
       console.error('Error checking subscription:', error);
+      setIsSubscribed(false);
     }
   };
 
@@ -69,10 +100,23 @@ export const usePushNotifications = () => {
         }
       }
 
-      // Obter registration do SW
-      const registration = await navigator.serviceWorker.ready;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      // Criar subscription
+      // Limpar qualquer subscription antiga primeiro
+      const registration = await navigator.serviceWorker.ready;
+      const existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) {
+        await existingSubscription.unsubscribe();
+      }
+
+      // Limpar subscriptions antigas do banco
+      await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Criar nova subscription
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(
@@ -84,9 +128,6 @@ export const usePushNotifications = () => {
       const deviceType = detectDeviceType();
 
       // Salvar no banco
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
       const { error } = await supabase
         .from('push_subscriptions')
         .insert({
@@ -96,15 +137,26 @@ export const usePushNotifications = () => {
           user_agent: navigator.userAgent
         });
 
-      if (error) throw error;
+      if (error) {
+        // Se der erro, tentar desinscrever do navegador também
+        await subscription.unsubscribe();
+        throw error;
+      }
 
       setIsSubscribed(true);
       toast.success('Notificações ativadas com sucesso!');
       return true;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error subscribing:', error);
-      toast.error('Erro ao ativar notificações');
+      
+      // Mensagem de erro mais específica
+      if (error.message?.includes('duplicate')) {
+        toast.error('Já existe uma inscrição ativa. Tente desativar e ativar novamente.');
+      } else {
+        toast.error('Erro ao ativar notificações');
+      }
+      
       return false;
     } finally {
       setLoading(false);

@@ -680,6 +680,47 @@ const Booking = () => {
         })
         .catch((err) => console.error('[Email] Failed to send notification:', err));
 
+      // Send push notification to client
+      const selectedServiceNames = services
+        .filter(s => selectedServices.includes(s.id))
+        .map(s => s.name)
+        .join(", ");
+
+      supabase.functions
+        .invoke('send-push-notification', {
+          body: {
+            userId: user.id,
+            title: business.auto_confirm_appointments ? '✅ Agendamento Confirmado' : '📅 Agendamento Criado',
+            body: business.auto_confirm_appointments 
+              ? `Seu agendamento de ${selectedServiceNames} foi confirmado automaticamente!`
+              : `Seu agendamento de ${selectedServiceNames} foi criado e aguarda confirmação`,
+            notificationType: business.auto_confirm_appointments ? 'appointment_confirmed' : 'appointment_created',
+            data: { appointmentId: resultData.appointment_id }
+          }
+        })
+        .catch((err) => console.error('[Push] Failed to send notification to client:', err));
+
+      // Send push notification to business owner - fetch owner_id first
+      const { data: businessData } = await supabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', businessId)
+        .single();
+
+      if (businessData?.owner_id) {
+        supabase.functions
+          .invoke('send-push-notification', {
+            body: {
+              userId: businessData.owner_id,
+              title: '🆕 Novo Agendamento',
+              body: `Novo agendamento de ${selectedServiceNames}`,
+              notificationType: 'new_appointment',
+              data: { appointmentId: resultData.appointment_id }
+            }
+          })
+          .catch((err) => console.error('[Push] Failed to send notification to business:', err));
+      }
+
       toast({
         title: "Sucesso!",
         description: business.auto_confirm_appointments 

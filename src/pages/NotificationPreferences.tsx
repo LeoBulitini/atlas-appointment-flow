@@ -14,10 +14,29 @@ export default function NotificationPreferences() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<any>(null);
+  const [isBusinessOwner, setIsBusinessOwner] = useState(false);
 
   useEffect(() => {
     loadPreferences();
+    checkIfBusinessOwner();
   }, []);
+
+  const checkIfBusinessOwner = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      setIsBusinessOwner(!!business);
+    } catch (error) {
+      console.error('Error checking business owner:', error);
+    }
+  };
 
   const loadPreferences = async () => {
     try {
@@ -109,171 +128,175 @@ export default function NotificationPreferences() {
             </p>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Notificações de Cliente
-              </CardTitle>
-              <CardDescription>
-                Notificações sobre seus agendamentos e recompensas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="appointment_created">Agendamento Criado</Label>
-                <Switch
-                  id="appointment_created"
-                  checked={preferences?.appointment_created}
-                  onCheckedChange={(v) => updatePreference('appointment_created', v)}
-                  disabled={saving}
-                />
-              </div>
+          {!isBusinessOwner && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Notificações de Cliente
+                </CardTitle>
+                <CardDescription>
+                  Notificações sobre seus agendamentos e recompensas
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appointment_created">Agendamento Criado</Label>
+                  <Switch
+                    id="appointment_created"
+                    checked={preferences?.appointment_created}
+                    onCheckedChange={(v) => updatePreference('appointment_created', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="appointment_confirmed">Agendamento Confirmado</Label>
-                <Switch
-                  id="appointment_confirmed"
-                  checked={preferences?.appointment_confirmed}
-                  onCheckedChange={(v) => updatePreference('appointment_confirmed', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appointment_confirmed">Agendamento Confirmado</Label>
+                  <Switch
+                    id="appointment_confirmed"
+                    checked={preferences?.appointment_confirmed}
+                    onCheckedChange={(v) => updatePreference('appointment_confirmed', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="appointment_reminder">Lembretes de Agendamento</Label>
-                <Switch
-                  id="appointment_reminder"
-                  checked={preferences?.appointment_reminder}
-                  onCheckedChange={(v) => updatePreference('appointment_reminder', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appointment_reminder">Lembretes de Agendamento</Label>
+                  <Switch
+                    id="appointment_reminder"
+                    checked={preferences?.appointment_reminder}
+                    onCheckedChange={(v) => updatePreference('appointment_reminder', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="appointment_rescheduled">Reagendamentos</Label>
-                <Switch
-                  id="appointment_rescheduled"
-                  checked={preferences?.appointment_rescheduled}
-                  onCheckedChange={(v) => updatePreference('appointment_rescheduled', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appointment_rescheduled">Reagendamentos</Label>
+                  <Switch
+                    id="appointment_rescheduled"
+                    checked={preferences?.appointment_rescheduled}
+                    onCheckedChange={(v) => updatePreference('appointment_rescheduled', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="appointment_cancelled">Cancelamentos</Label>
-                <Switch
-                  id="appointment_cancelled"
-                  checked={preferences?.appointment_cancelled}
-                  onCheckedChange={(v) => updatePreference('appointment_cancelled', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appointment_cancelled">Cancelamentos</Label>
+                  <Switch
+                    id="appointment_cancelled"
+                    checked={preferences?.appointment_cancelled}
+                    onCheckedChange={(v) => updatePreference('appointment_cancelled', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="appointment_completed">Agendamento Concluído</Label>
-                <Switch
-                  id="appointment_completed"
-                  checked={preferences?.appointment_completed}
-                  onCheckedChange={(v) => updatePreference('appointment_completed', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appointment_completed">Agendamento Concluído</Label>
+                  <Switch
+                    id="appointment_completed"
+                    checked={preferences?.appointment_completed}
+                    onCheckedChange={(v) => updatePreference('appointment_completed', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="birthday_message">Mensagem de Aniversário</Label>
-                <Switch
-                  id="birthday_message"
-                  checked={preferences?.birthday_message}
-                  onCheckedChange={(v) => updatePreference('birthday_message', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="birthday_message">Mensagem de Aniversário</Label>
+                  <Switch
+                    id="birthday_message"
+                    checked={preferences?.birthday_message}
+                    onCheckedChange={(v) => updatePreference('birthday_message', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="marketing_messages">Mensagens de Marketing</Label>
-                <Switch
-                  id="marketing_messages"
-                  checked={preferences?.marketing_messages}
-                  onCheckedChange={(v) => updatePreference('marketing_messages', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="marketing_messages">Mensagens de Marketing</Label>
+                  <Switch
+                    id="marketing_messages"
+                    checked={preferences?.marketing_messages}
+                    onCheckedChange={(v) => updatePreference('marketing_messages', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="loyalty_updates">Atualizações de Fidelidade</Label>
-                <Switch
-                  id="loyalty_updates"
-                  checked={preferences?.loyalty_updates}
-                  onCheckedChange={(v) => updatePreference('loyalty_updates', v)}
-                  disabled={saving}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="loyalty_updates">Atualizações de Fidelidade</Label>
+                  <Switch
+                    id="loyalty_updates"
+                    checked={preferences?.loyalty_updates}
+                    onCheckedChange={(v) => updatePreference('loyalty_updates', v)}
+                    disabled={saving}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Store className="h-5 w-5" />
-                Notificações de Negócio
-              </CardTitle>
-              <CardDescription>
-                Notificações sobre seu estabelecimento
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="new_appointment">Novos Agendamentos</Label>
-                <Switch
-                  id="new_appointment"
-                  checked={preferences?.new_appointment}
-                  onCheckedChange={(v) => updatePreference('new_appointment', v)}
-                  disabled={saving}
-                />
-              </div>
+          {isBusinessOwner && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5" />
+                  Notificações de Negócio
+                </CardTitle>
+                <CardDescription>
+                  Notificações sobre seu estabelecimento
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="new_appointment">Novos Agendamentos</Label>
+                  <Switch
+                    id="new_appointment"
+                    checked={preferences?.new_appointment}
+                    onCheckedChange={(v) => updatePreference('new_appointment', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="appointment_changes">Alterações em Agendamentos</Label>
-                <Switch
-                  id="appointment_changes"
-                  checked={preferences?.appointment_changes}
-                  onCheckedChange={(v) => updatePreference('appointment_changes', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appointment_changes">Alterações em Agendamentos</Label>
+                  <Switch
+                    id="appointment_changes"
+                    checked={preferences?.appointment_changes}
+                    onCheckedChange={(v) => updatePreference('appointment_changes', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="financial_alerts">Alertas Financeiros</Label>
-                <Switch
-                  id="financial_alerts"
-                  checked={preferences?.financial_alerts}
-                  onCheckedChange={(v) => updatePreference('financial_alerts', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="financial_alerts">Alertas Financeiros</Label>
+                  <Switch
+                    id="financial_alerts"
+                    checked={preferences?.financial_alerts}
+                    onCheckedChange={(v) => updatePreference('financial_alerts', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="stock_alerts">Alertas de Estoque</Label>
-                <Switch
-                  id="stock_alerts"
-                  checked={preferences?.stock_alerts}
-                  onCheckedChange={(v) => updatePreference('stock_alerts', v)}
-                  disabled={saving}
-                />
-              </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="stock_alerts">Alertas de Estoque</Label>
+                  <Switch
+                    id="stock_alerts"
+                    checked={preferences?.stock_alerts}
+                    onCheckedChange={(v) => updatePreference('stock_alerts', v)}
+                    disabled={saving}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="new_review">Novas Avaliações</Label>
-                <Switch
-                  id="new_review"
-                  checked={preferences?.new_review}
-                  onCheckedChange={(v) => updatePreference('new_review', v)}
-                  disabled={saving}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="new_review">Novas Avaliações</Label>
+                  <Switch
+                    id="new_review"
+                    checked={preferences?.new_review}
+                    onCheckedChange={(v) => updatePreference('new_review', v)}
+                    disabled={saving}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
