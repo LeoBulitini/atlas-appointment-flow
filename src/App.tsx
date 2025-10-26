@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { InstallPWA } from "./components/InstallPWA";
-import { PushNotificationManager } from "./components/PushNotificationManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CompleteProfile from "./pages/CompleteProfile";
@@ -24,7 +23,6 @@ import BusinessLoyalty from "./pages/BusinessLoyalty";
 import BusinessSubscription from "./pages/BusinessSubscription";
 import Booking from "./pages/Booking";
 import NotFound from "./pages/NotFound";
-import NotificationPreferences from "./pages/NotificationPreferences";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SubscriptionGuard from "./components/SubscriptionGuard";
 import BusinessLayout from "./components/BusinessLayout";
@@ -38,7 +36,6 @@ const App = () => (
         <Toaster />
         <Sonner />
         <InstallPWA />
-        <PushNotificationManager />
         <BrowserRouter>
           <Routes>
           <Route path="/" element={<Index />} />
@@ -58,14 +55,6 @@ const App = () => (
             element={
               <ProtectedRoute requiredUserType="client">
                 <ClientDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notification-preferences"
-            element={
-              <ProtectedRoute>
-                <NotificationPreferences />
               </ProtectedRoute>
             }
           />
