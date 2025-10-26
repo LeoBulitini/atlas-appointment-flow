@@ -9,28 +9,38 @@ import { toast } from 'sonner';
  */
 export const PushNotificationManager = () => {
   const pushNotifications = usePushNotifications();
-  const [hasChecked, setHasChecked] = useState(false);
+  const [hasAttemptedInit, setHasAttemptedInit] = useState(false);
 
   useEffect(() => {
     const initPushNotifications = async () => {
+      // Apenas executar uma vez
+      if (hasAttemptedInit) return;
+      
       try {
         // Verificar se o usuário está autenticado
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user || hasChecked) return;
+        if (!user) return;
 
-        setHasChecked(true);
+        // Marcar que já tentamos inicializar
+        setHasAttemptedInit(true);
+        console.log('[PushManager] Initializing for user:', user.id);
 
         // Verificar se já solicitou permissão antes
         const hasAskedPermission = localStorage.getItem('push_permission_asked');
         
-        // Se já está subscrito, não fazer nada
+        // Aguardar um pouco para garantir que o hook checkSubscription já rodou
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Se já está subscrito após o check, não fazer nada
         if (pushNotifications.isSubscribed) {
+          console.log('[PushManager] Already subscribed, skipping');
           return;
         }
 
         // Se ainda não solicitou permissão, solicitar agora
         if (!hasAskedPermission && pushNotifications.isSupported) {
-          // Aguardar um pouco para não ser muito invasivo (esperar a página carregar)
+          console.log('[PushManager] First time, requesting permission');
+          // Aguardar mais um pouco para não ser muito invasivo
           setTimeout(async () => {
             try {
               // Tentar ativar automaticamente
@@ -43,13 +53,15 @@ export const PushNotificationManager = () => {
                 toast.success('Notificações ativadas! Você receberá atualizações importantes.');
               } else {
                 // Se falhou, mostrar mensagem amigável
-                toast.info('Você pode ativar notificações nas configurações para receber atualizações.');
+                toast.info('Você pode ativar notificações nas configurações.');
               }
             } catch (error) {
               console.error('[PushManager] Error subscribing:', error);
               localStorage.setItem('push_permission_asked', 'true');
             }
-          }, 2000); // Espera 2 segundos após o login
+          }, 1000);
+        } else {
+          console.log('[PushManager] Permission already asked or not supported');
         }
       } catch (error) {
         console.error('[PushManager] Error initializing:', error);
@@ -57,10 +69,10 @@ export const PushNotificationManager = () => {
     };
 
     // Verificar suporte antes de tentar inicializar
-    if (pushNotifications.isSupported) {
+    if (pushNotifications.isSupported && !hasAttemptedInit) {
       initPushNotifications();
     }
-  }, [pushNotifications.isSubscribed, pushNotifications.isSupported, hasChecked]);
+  }, [pushNotifications.isSupported, hasAttemptedInit]);
 
   // Componente não renderiza nada
   return null;

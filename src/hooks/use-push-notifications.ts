@@ -7,12 +7,17 @@ export const usePushNotifications = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     checkSupport();
     checkPermission();
-    checkSubscription();
-  }, []);
+    
+    // Verificar subscription apenas uma vez após suporte ser confirmado
+    if (isSupported && !isChecking) {
+      checkSubscription();
+    }
+  }, [isSupported]);
 
   const checkSupport = () => {
     const supported = 'serviceWorker' in navigator && 
@@ -28,11 +33,15 @@ export const usePushNotifications = () => {
   };
 
   const checkSubscription = async () => {
-    if (!isSupported) return;
+    if (!isSupported || isChecking) return;
 
+    setIsChecking(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsChecking(false);
+        return;
+      }
 
       // Verificar subscription no navegador
       const registration = await navigator.serviceWorker.ready;
@@ -45,28 +54,67 @@ export const usePushNotifications = () => {
         .eq('user_id', user.id)
         .eq('is_active', true);
 
-      // Se tem no navegador mas não no banco, está inconsistente
-      if (browserSubscription && (!dbSubscriptions || dbSubscriptions.length === 0)) {
-        console.log('[Push] Inconsistent state: browser has subscription but DB does not');
-        setIsSubscribed(false);
+      const hasDbSubscription = dbSubscriptions && dbSubscriptions.length > 0;
+
+      // CASO 1: Tem no navegador E no banco = TUDO OK ✅
+      if (browserSubscription && hasDbSubscription) {
+        console.log('[Push] Subscription active (browser + DB)');
+        setIsSubscribed(true);
+        setIsChecking(false);
         return;
       }
 
-      // Se não tem no navegador mas tem no banco, fazer cleanup
-      if (!browserSubscription && dbSubscriptions && dbSubscriptions.length > 0) {
-        console.log('[Push] Cleaning up orphaned DB subscriptions');
+      // CASO 2: Tem APENAS no navegador = Tentar salvar no banco
+      if (browserSubscription && !hasDbSubscription) {
+        console.log('[Push] Browser subscription found, saving to DB');
+        try {
+          const deviceType = detectDeviceType();
+          const { error } = await supabase
+            .from('push_subscriptions')
+            .insert({
+              user_id: user.id,
+              subscription: browserSubscription.toJSON() as any,
+              device_type: deviceType,
+              user_agent: navigator.userAgent
+            });
+
+          if (!error) {
+            console.log('[Push] Subscription saved to DB');
+            setIsSubscribed(true);
+          } else {
+            console.error('[Push] Failed to save to DB:', error);
+            // Manter como subscrito porque o navegador tem
+            setIsSubscribed(true);
+          }
+        } catch (err) {
+          console.error('[Push] Error saving to DB:', err);
+          // Manter como subscrito porque o navegador tem
+          setIsSubscribed(true);
+        }
+        setIsChecking(false);
+        return;
+      }
+
+      // CASO 3: Tem APENAS no banco = Fazer cleanup
+      if (!browserSubscription && hasDbSubscription) {
+        console.log('[Push] Orphaned DB subscription, cleaning up');
         await supabase
           .from('push_subscriptions')
           .delete()
           .eq('user_id', user.id);
         setIsSubscribed(false);
+        setIsChecking(false);
         return;
       }
 
-      setIsSubscribed(!!browserSubscription);
-    } catch (error) {
-      console.error('Error checking subscription:', error);
+      // CASO 4: Não tem em nenhum lugar
+      console.log('[Push] No subscription found');
       setIsSubscribed(false);
+      setIsChecking(false);
+    } catch (error) {
+      console.error('[Push] Error checking subscription:', error);
+      setIsSubscribed(false);
+      setIsChecking(false);
     }
   };
 
@@ -88,20 +136,28 @@ export const usePushNotifications = () => {
   };
 
   const subscribe = async (): Promise<boolean> => {
+    console.log('[Push] Subscribe called, current state:', { isSubscribed, permission, loading });
     setLoading(true);
 
     try {
       // Solicitar permissão se necessário
       if (permission !== 'granted') {
+        console.log('[Push] Requesting permission');
         const granted = await requestPermission();
         if (!granted) {
+          console.log('[Push] Permission denied');
           setLoading(false);
           return false;
         }
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        console.log('[Push] No user authenticated');
+        throw new Error('User not authenticated');
+      }
+
+      console.log('[Push] User authenticated:', user.id);
 
       // Verificar se já existe subscription no banco ANTES de limpar
       const { data: existingDbSubs } = await supabase
@@ -114,9 +170,15 @@ export const usePushNotifications = () => {
       const registration = await navigator.serviceWorker.ready;
       const existingBrowserSub = await registration.pushManager.getSubscription();
       
+      console.log('[Push] Existing state:', { 
+        browserSub: !!existingBrowserSub, 
+        dbSubs: existingDbSubs?.length || 0 
+      });
+      
       if (existingDbSubs && existingDbSubs.length > 0 && existingBrowserSub) {
-        console.log('[Push] Already subscribed');
+        console.log('[Push] Already subscribed, returning true');
         setIsSubscribed(true);
+        setLoading(false);
         return true;
       }
 
@@ -135,6 +197,7 @@ export const usePushNotifications = () => {
           .eq('user_id', user.id);
       }
 
+      console.log('[Push] Creating new subscription');
       // Criar nova subscription
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -146,6 +209,7 @@ export const usePushNotifications = () => {
       // Detectar tipo de dispositivo
       const deviceType = detectDeviceType();
 
+      console.log('[Push] Saving subscription to DB');
       // Salvar no banco
       const { error } = await supabase
         .from('push_subscriptions')
@@ -157,23 +221,26 @@ export const usePushNotifications = () => {
         });
 
       if (error) {
+        console.error('[Push] Error saving to DB:', error);
         // Se der erro, tentar desinscrever do navegador também
         await subscription.unsubscribe();
         throw error;
       }
 
+      console.log('[Push] Subscription saved successfully');
       setIsSubscribed(true);
       toast.success('Notificações ativadas com sucesso!');
       return true;
 
     } catch (error: any) {
-      console.error('Error subscribing:', error);
+      console.error('[Push] Error subscribing:', error);
       
       // Mensagem de erro mais específica
       if (error.message?.includes('duplicate')) {
         toast.error('Já existe uma inscrição ativa. Tente desativar e ativar novamente.');
       } else if (error.code === 'PGRST301') {
         // Erro de unique constraint
+        console.log('[Push] Duplicate constraint, already subscribed');
         toast.info('Notificações já estão ativas.');
         setIsSubscribed(true);
         return true;
@@ -228,7 +295,8 @@ export const usePushNotifications = () => {
     loading,
     subscribe,
     unsubscribe,
-    requestPermission
+    requestPermission,
+    checkSubscription // Expor para debug
   };
 };
 
