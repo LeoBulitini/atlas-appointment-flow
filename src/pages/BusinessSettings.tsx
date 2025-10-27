@@ -226,24 +226,39 @@ export default function BusinessSettings() {
     }
   };
 
-  const handleEditServiceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !editingService) return;
+  const handleEditServiceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !editingService || !business) return;
     const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setEditingService({ ...editingService, image_url: reader.result as string });
-    };
-    reader.readAsDataURL(file);
+    
+    setLoading(true);
+    const { uploadServiceImage } = await import("@/lib/storage-utils");
+    const { url, error } = await uploadServiceImage(business.id, editingService.id, file);
+    setLoading(false);
+    
+    if (error) {
+      toast({ title: "Erro ao fazer upload", description: error, variant: "destructive" });
+    } else if (url) {
+      setEditingService({ ...editingService, image_url: url });
+    }
   };
 
-  const handleServiceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
+  const handleServiceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !business) return;
     const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setNewService({ ...newService, image_url: reader.result as string });
-    };
-    reader.readAsDataURL(file);
+    
+    // Criar um ID temporário para preview
+    const tempId = `temp_${Date.now()}`;
+    
+    setLoading(true);
+    const { uploadServiceImage } = await import("@/lib/storage-utils");
+    const { url, error } = await uploadServiceImage(business.id, tempId, file);
+    setLoading(false);
+    
+    if (error) {
+      toast({ title: "Erro ao fazer upload", description: error, variant: "destructive" });
+    } else if (url) {
+      setNewService({ ...newService, image_url: url });
+    }
   };
 
   const toggleServiceVisibility = async (serviceId: string, currentPublicStatus: boolean) => {
@@ -347,29 +362,58 @@ export default function BusinessSettings() {
     if (!business || !e.target.files || e.target.files.length === 0) return;
 
     const file = e.target.files[0];
-    const reader = new FileReader();
-
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      setLoading(true);
-      const { error } = await supabase.from("business_portfolio").insert({
+    
+    setLoading(true);
+    
+    // Criar portfolio item primeiro para ter o ID
+    const { data: portfolioItem, error: insertError } = await supabase
+      .from("business_portfolio")
+      .insert({
         business_id: business.id,
         media_type: file.type.startsWith('image/') ? 'image' : 'video',
-        media_data: base64,
+        media_data: '', // Temporário
         description: '',
         display_order: portfolio.length
-      });
+      })
+      .select()
+      .single();
 
-      if (error) {
-        toast({ title: "Erro ao adicionar mídia", variant: "destructive" });
-      } else {
-        toast({ title: "Mídia adicionada com sucesso!" });
-        fetchBusinessData();
-      }
+    if (insertError || !portfolioItem) {
       setLoading(false);
-    };
+      toast({ title: "Erro ao adicionar mídia", variant: "destructive" });
+      return;
+    }
 
-    reader.readAsDataURL(file);
+    // Upload da mídia
+    const { uploadPortfolioMedia } = await import("@/lib/storage-utils");
+    const { url, error: uploadError } = await uploadPortfolioMedia(
+      business.id,
+      portfolioItem.id,
+      file
+    );
+
+    if (uploadError || !url) {
+      // Se falhou o upload, deletar o item criado
+      await supabase.from("business_portfolio").delete().eq("id", portfolioItem.id);
+      setLoading(false);
+      toast({ title: "Erro ao fazer upload", description: uploadError, variant: "destructive" });
+      return;
+    }
+
+    // Atualizar com a URL real
+    const { error: updateError } = await supabase
+      .from("business_portfolio")
+      .update({ media_data: url })
+      .eq("id", portfolioItem.id);
+
+    setLoading(false);
+
+    if (updateError) {
+      toast({ title: "Erro ao atualizar mídia", variant: "destructive" });
+    } else {
+      toast({ title: "Mídia adicionada com sucesso!" });
+      fetchBusinessData();
+    }
   };
 
   const handleDeletePortfolio = async (id: string) => {
@@ -904,26 +948,32 @@ export default function BusinessSettings() {
                       onChange={async (e) => {
                         if (!e.target.files || e.target.files.length === 0) return;
                         const file = e.target.files[0];
-                        const reader = new FileReader();
                         
-                        reader.onloadend = async () => {
-                          const base64 = reader.result as string;
-                          setLoading(true);
-                          const { error } = await supabase
+                        setLoading(true);
+                        const { uploadBusinessLogo } = await import("@/lib/storage-utils");
+                        const { url, error } = await uploadBusinessLogo(business.id, file);
+                        
+                        if (error) {
+                          setLoading(false);
+                          toast({ title: "Erro ao fazer upload", description: error, variant: "destructive" });
+                          return;
+                        }
+                        
+                        if (url) {
+                          const { error: updateError } = await supabase
                             .from("businesses")
-                            .update({ logo_url: base64 })
+                            .update({ logo_url: url })
                             .eq("id", business.id);
                           
-                          if (error) {
+                          setLoading(false);
+                          
+                          if (updateError) {
                             toast({ title: "Erro ao atualizar logo", variant: "destructive" });
                           } else {
                             toast({ title: "Logo atualizada com sucesso!" });
                             fetchBusinessData();
                           }
-                          setLoading(false);
-                        };
-                        
-                        reader.readAsDataURL(file);
+                        }
                       }}
                     />
                   </div>

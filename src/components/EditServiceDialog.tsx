@@ -39,16 +39,38 @@ export function EditServiceDialog({
 }: EditServiceDialogProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(serviceImageUrl);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setServiceImageUrl(base64);
-        setImagePreview(base64);
-      };
-      reader.readAsDataURL(file);
+      // Preview imediato com object URL
+      const objectUrl = URL.createObjectURL(file);
+      setImagePreview(objectUrl);
+      
+      // Fazer upload em background
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+      
+      // Buscar businessId
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", user.id)
+        .single();
+      
+      if (!businessData) return;
+      
+      // Upload para storage
+      const { uploadServiceImage } = await import("@/lib/storage-utils");
+      const serviceId = `temp_${Date.now()}`; // ID temporário será substituído no submit
+      const { url, error } = await uploadServiceImage(businessData.id, serviceId, file);
+      
+      if (error) {
+        console.error("Upload error:", error);
+      } else if (url) {
+        setServiceImageUrl(url);
+      }
     }
   };
 
