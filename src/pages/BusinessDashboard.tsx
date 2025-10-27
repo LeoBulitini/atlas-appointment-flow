@@ -488,7 +488,7 @@ const BusinessDashboard = () => {
 
   const todayAppointments = useMemo(() => {
     const today = formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd");
-    const todayApps = appointmentsByDate.get(today) || [];
+    const todayApps = (appointmentsByDate.get(today) || []).filter(apt => apt.status !== 'cancelled');
     
     return todayApps.sort((a, b) => {
       const statusPriority: Record<string, number> = {

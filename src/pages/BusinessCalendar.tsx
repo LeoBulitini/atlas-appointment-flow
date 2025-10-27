@@ -104,7 +104,7 @@ export default function BusinessCalendar() {
 
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    return appointments.filter(apt => apt.appointment_date === dateStr);
+    return appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled');
   };
 
   const isHourInactive = (hour: number, dayOfWeek: string) => {
@@ -163,7 +163,7 @@ export default function BusinessCalendar() {
     const timezone = 'America/Sao_Paulo';
     const zonedDate = toZonedTime(selectedDate, timezone);
     const dateStr = format(zonedDate, 'yyyy-MM-dd');
-    const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr);
+    const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled');
     
     const hours = Array.from({ length: 24 }, (_, i) => i); // 0h às 23h
     
@@ -328,7 +328,7 @@ export default function BusinessCalendar() {
         <div className="grid grid-cols-7 gap-2">
           {weekDays.map(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
-            const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr);
+            const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled');
             const isToday = isSameDay(day, new Date());
 
             return (
