@@ -17,8 +17,18 @@ const CompleteProfile = () => {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [userTypeFromUrl, setUserTypeFromUrl] = useState(false);
 
   useEffect(() => {
+    // Ler userType da URL se disponível
+    const params = new URLSearchParams(window.location.search);
+    const urlUserType = params.get("userType");
+    
+    if (urlUserType === "client" || urlUserType === "business") {
+      setUserType(urlUserType);
+      setUserTypeFromUrl(true);
+    }
+    
     checkProfile();
   }, []);
 
@@ -166,23 +176,25 @@ const CompleteProfile = () => {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label>Tipo de Conta</Label>
-              <RadioGroup value={userType} onValueChange={(value: any) => setUserType(value)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="client" id="client" />
-                  <Label htmlFor="client" className="font-normal cursor-pointer">
-                    Cliente - Agendar serviços
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="business" id="business" />
-                  <Label htmlFor="business" className="font-normal cursor-pointer">
-                    Empresa - Oferecer serviços
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+            {!userTypeFromUrl && (
+              <div className="space-y-2">
+                <Label>Tipo de Conta</Label>
+                <RadioGroup value={userType} onValueChange={(value: any) => setUserType(value)}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="client" id="client" />
+                    <Label htmlFor="client" className="font-normal cursor-pointer">
+                      Cliente - Agendar serviços
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="business" id="business" />
+                    <Label htmlFor="business" className="font-normal cursor-pointer">
+                      Empresa - Oferecer serviços
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
             
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Salvando..." : "Completar Cadastro"}

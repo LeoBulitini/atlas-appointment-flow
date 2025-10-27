@@ -44,10 +44,10 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/complete-profile`,
+          redirectTo: `${window.location.origin}/auth/google-callback`,
           queryParams: {
             access_type: "offline",
-            prompt: "consent",
+            prompt: "select_account",
           },
         },
       });
@@ -57,6 +57,31 @@ const Auth = () => {
       toast({
         variant: "destructive",
         title: "Erro no login com Google",
+        description: error.message,
+      });
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/google-callback?mode=signup&userType=${userType}`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro no cadastro com Google",
         description: error.message,
       });
       setLoading(false);
@@ -358,7 +383,7 @@ const Auth = () => {
                   type="button"
                   variant="outline"
                   className="w-full"
-                  onClick={handleGoogleLogin}
+                  onClick={handleGoogleSignup}
                   disabled={loading}
                 >
                   <FcGoogle className="mr-2 h-5 w-5" />

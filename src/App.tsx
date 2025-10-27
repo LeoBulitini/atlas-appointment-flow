@@ -8,6 +8,8 @@ import { InstallPWA } from "./components/InstallPWA";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CompleteProfile from "./pages/CompleteProfile";
+import GoogleAuthCallback from "./pages/GoogleAuthCallback";
+import SelectAccountType from "./pages/SelectAccountType";
 import ClientDashboard from "./pages/ClientDashboard";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import BusinessSetup from "./pages/BusinessSetup";
@@ -40,6 +42,8 @@ const App = () => (
           <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/google-callback" element={<GoogleAuthCallback />} />
+          <Route path="/select-account-type" element={<SelectAccountType />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/booking/:businessId" element={<Booking />} />
           <Route
