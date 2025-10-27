@@ -309,9 +309,15 @@ const Booking = () => {
         return;
       }
 
-      const { data: businessData, error: businessError } = await businessQuery.single();
+      const { data: businessData, error: businessError } = await businessQuery.maybeSingle();
 
       if (businessError) throw businessError;
+      
+      if (!businessData) {
+        navigate("/404");
+        return;
+      }
+      
       setBusiness(businessData);
 
       // Atualizar view count
