@@ -11,6 +11,10 @@ import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { RescheduleDialog } from "@/components/RescheduleDialog";
+import { toast } from "sonner";
 
 interface Appointment {
   id: string;
@@ -20,7 +24,7 @@ interface Appointment {
   status: string;
   profiles: { full_name: string };
   appointment_services: Array<{
-    services: { name: string };
+    services: { id: string; name: string };
   }>;
 }
 
@@ -35,6 +39,10 @@ export default function BusinessCalendar() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [openingHours, setOpeningHours] = useState<any>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -84,7 +92,7 @@ export default function BusinessCalendar() {
           *,
           profiles(full_name),
           appointment_services(
-            services(name)
+            services(id, name)
           )
         `)
         .eq("business_id", businessId)
@@ -157,6 +165,62 @@ export default function BusinessCalendar() {
       default:
         return '#6b7280';
     }
+  };
+
+  const handleReadyForService = async (appointmentId: string) => {
+    try {
+      toast.success("Enviando notificação...", { description: "Informando o cliente que você está pronto." });
+      
+      const { error } = await supabase.functions.invoke('send-appointment-email', {
+        body: {
+          appointmentId,
+          type: 'ready_for_service'
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success("Notificação enviada!", { description: "O cliente foi avisado que você está pronto." });
+    } catch (error) {
+      console.error("Error sending ready notification:", error);
+      toast.error("Erro", { description: "Não foi possível enviar a notificação. Tente novamente." });
+    }
+  };
+
+  const handleCancelAppointment = async () => {
+    if (!selectedAppointmentId) return;
+    
+    try {
+      const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", selectedAppointmentId);
+      if (error) throw error;
+      
+      supabase.functions
+        .invoke('send-appointment-email', {
+          body: {
+            appointmentId: selectedAppointmentId,
+            type: 'cancelled'
+          }
+        })
+        .catch(error => console.error("Error sending cancellation email:", error));
+      
+      toast.success("Agendamento cancelado");
+      setShowCancelDialog(false);
+      setSelectedAppointmentId(null);
+      fetchAppointments();
+    } catch (error) {
+      console.error("Error cancelling appointment:", error);
+      toast.error("Erro ao cancelar agendamento");
+    }
+  };
+
+  const openCancelDialog = (appointmentId: string) => {
+    setSelectedAppointmentId(appointmentId);
+    setShowCancelDialog(true);
+  };
+
+  const openRescheduleDialog = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setShowRescheduleDialog(true);
   };
 
   const renderDayView = () => {
@@ -276,25 +340,45 @@ export default function BusinessCalendar() {
                 const height = (duration / 60) * 64;
 
                 return (
-                  <div
-                    key={apt.id}
-                    className="absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10"
-                    style={{
-                      top: `${top}px`,
-                      height: `${height}px`,
-                      backgroundColor: getStatusBgColor(apt.status),
-                      minHeight: '40px'
-                    }}
-                  >
-                    <div className="text-sm font-medium truncate">
-                      {apt.appointment_time} - {apt.profiles?.full_name}
-                    </div>
-                    {apt.appointment_services?.[0]?.services && (
-                      <div className="text-xs truncate opacity-90">
-                        {apt.appointment_services[0].services.name}
+                  <ContextMenu key={apt.id}>
+                    <ContextMenuTrigger>
+                      <div
+                        className="absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10 cursor-pointer hover:brightness-110 transition-all"
+                        style={{
+                          top: `${top}px`,
+                          height: `${height}px`,
+                          backgroundColor: getStatusBgColor(apt.status),
+                          minHeight: '40px'
+                        }}
+                      >
+                        <div className="text-sm font-medium truncate">
+                          {apt.appointment_time} - {apt.profiles?.full_name}
+                        </div>
+                        {apt.appointment_services?.[0]?.services && (
+                          <div className="text-xs truncate opacity-90">
+                            {apt.appointment_services[0].services.name}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                        <ContextMenuItem onClick={() => handleReadyForService(apt.id)}>
+                          ✓ Avisar que está pronto
+                        </ContextMenuItem>
+                      )}
+                      {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                        <ContextMenuItem onClick={() => openRescheduleDialog(apt)}>
+                          📅 Alterar
+                        </ContextMenuItem>
+                      )}
+                      {apt.status !== 'cancelled' && (
+                        <ContextMenuItem onClick={() => openCancelDialog(apt.id)} className="text-destructive">
+                          ✕ Cancelar
+                        </ContextMenuItem>
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
                 );
               })}
             </div>
@@ -496,6 +580,35 @@ export default function BusinessCalendar() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Agendamento</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelAppointment}>Cancelar Agendamento</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {selectedAppointment && businessId && (
+        <RescheduleDialog
+          open={showRescheduleDialog}
+          onOpenChange={setShowRescheduleDialog}
+          appointmentId={selectedAppointment.id}
+          businessId={businessId}
+          currentDate={selectedAppointment.appointment_date}
+          currentTime={selectedAppointment.appointment_time}
+          currentServiceId={selectedAppointment.appointment_services?.[0]?.services?.id || ''}
+          onRescheduleSuccess={() => {
+            setShowRescheduleDialog(false);
+            fetchAppointments();
+          }}
+        />
+      )}
     </div>
   );
 }
