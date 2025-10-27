@@ -33,6 +33,7 @@ export function SpecialHoursManager({ businessId }: SpecialHoursManagerProps) {
   const [specialHours, setSpecialHours] = useState<SpecialHour[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingDate, setEditingDate] = useState<Date | undefined>();
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
   const [openTime, setOpenTime] = useState("09:00");
   const [closeTime, setCloseTime] = useState("18:00");
@@ -69,6 +70,7 @@ export function SpecialHoursManager({ businessId }: SpecialHoursManagerProps) {
     if (!date) return;
     
     setEditingDate(date);
+    setPopoverOpen(false);
     
     // Check if there's already a special hour for this date
     const existing = specialHours.find(
@@ -200,7 +202,7 @@ export function SpecialHoursManager({ businessId }: SpecialHoursManagerProps) {
       <div className="grid gap-4">
         <div className="grid gap-2">
           <Label>Selecione a Data</Label>
-          <Popover>
+          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
