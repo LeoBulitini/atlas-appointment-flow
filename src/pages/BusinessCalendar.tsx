@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 interface Appointment {
   id: string;
@@ -24,12 +26,15 @@ interface Appointment {
 
 export default function BusinessCalendar() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [openingHours, setOpeningHours] = useState<any>(null);
 
   useEffect(() => {
     checkAuth();
@@ -41,6 +46,14 @@ export default function BusinessCalendar() {
     }
   }, [businessId, currentMonth]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -50,12 +63,13 @@ export default function BusinessCalendar() {
 
     const { data: business } = await supabase
       .from("businesses")
-      .select("id")
+      .select("id, opening_hours")
       .eq("owner_id", user.id)
       .single();
 
     if (business) {
       setBusinessId(business.id);
+      setOpeningHours(business.opening_hours || {});
     }
   };
 
@@ -76,7 +90,6 @@ export default function BusinessCalendar() {
         .eq("business_id", businessId)
         .gte("appointment_date", startDate)
         .lte("appointment_date", endDate)
-        .neq("status", "cancelled")
         .order("appointment_date", { ascending: true })
         .order("appointment_time", { ascending: true });
 
@@ -92,6 +105,28 @@ export default function BusinessCalendar() {
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     return appointments.filter(apt => apt.appointment_date === dateStr);
+  };
+
+  const isHourInactive = (hour: number, dayOfWeek: string) => {
+    if (!openingHours) return true;
+    
+    const daySchedule = openingHours[dayOfWeek];
+    if (!daySchedule || !daySchedule.isOpen) return true;
+    
+    try {
+      const openTime = daySchedule.openTime;
+      const closeTime = daySchedule.closeTime;
+      
+      if (!openTime || !closeTime) return true;
+      
+      const openHour = parseInt(openTime.split(':')[0]);
+      const closeHour = parseInt(closeTime.split(':')[0]);
+      
+      return hour < openHour || hour >= closeHour;
+    } catch (error) {
+      console.error('Error checking hour inactive:', error);
+      return true;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -130,7 +165,33 @@ export default function BusinessCalendar() {
     const dateStr = format(zonedDate, 'yyyy-MM-dd');
     const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr);
     
-    const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h às 20h
+    const hours = Array.from({ length: 24 }, (_, i) => i); // 0h às 23h
+    
+    // Verificar se a data selecionada é hoje
+    const isToday = format(selectedDate, 'yyyy-MM-dd') === format(toZonedTime(new Date(), timezone), 'yyyy-MM-dd');
+    
+    // Mapear dias da semana em inglês para português
+    const dayOfWeekMap: { [key: string]: string } = {
+      'sunday': 'sunday',
+      'monday': 'monday',
+      'tuesday': 'tuesday',
+      'wednesday': 'wednesday',
+      'thursday': 'thursday',
+      'friday': 'friday',
+      'saturday': 'saturday'
+    };
+    
+    const dayOfWeekEn = format(selectedDate, 'EEEE').toLowerCase();
+    const dayOfWeek = dayOfWeekMap[dayOfWeekEn] || 'monday';
+    
+    // Calcular posição da linha vermelha (hora atual)
+    let currentTimePosition = 0;
+    if (isToday) {
+      const now = toZonedTime(currentTime, timezone);
+      const currentHour = now.getHours();
+      const currentMinutes = now.getMinutes();
+      currentTimePosition = (currentHour * 64) + (currentMinutes * 64 / 60);
+    }
 
     return (
       <div className="space-y-4">
@@ -147,29 +208,68 @@ export default function BusinessCalendar() {
         </div>
 
         <div className="relative border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-[80px_1fr]">
+          <div className="grid grid-cols-[60px_1fr]">
             {/* Coluna de horários */}
             <div className="bg-muted/50 border-r">
               {hours.map(hour => (
-                <div key={hour} className="h-16 border-b flex items-center justify-center text-sm text-muted-foreground">
-                  {hour.toString().padStart(2, '0')}:00
+                <div key={hour} className="relative h-16 border-b">
+                  <div className="flex flex-col items-center justify-start pt-1 text-xs text-muted-foreground">
+                    <span>{hour.toString().padStart(2, '0')}:00</span>
+                  </div>
+                  <div className="absolute top-1/4 left-0 right-0 flex justify-center">
+                    <span className="text-[10px] text-muted-foreground/60">:15</span>
+                  </div>
+                  <div className="absolute top-1/2 left-0 right-0 flex justify-center">
+                    <span className="text-[10px] text-muted-foreground/60">:30</span>
+                  </div>
+                  <div className="absolute top-3/4 left-0 right-0 flex justify-center">
+                    <span className="text-[10px] text-muted-foreground/60">:45</span>
+                  </div>
                 </div>
               ))}
             </div>
 
             {/* Área de agendamentos */}
             <div className="relative">
-              {hours.map(hour => (
-                <div key={hour} className="h-16 border-b" />
-              ))}
+              {/* Linhas de hora e subdivisões de 15 minutos */}
+              {hours.map(hour => {
+                const isInactive = isHourInactive(hour, dayOfWeek);
+                return (
+                  <div key={hour} className="relative h-16 border-b">
+                    {/* Overlay para horário inativo com padrão de riscos */}
+                    {isInactive && (
+                      <div 
+                        className="absolute inset-0 bg-muted/30 z-5"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.05) 10px, rgba(0,0,0,0.05) 20px)'
+                        }}
+                      />
+                    )}
+                    {/* Linhas tracejadas para 15, 30 e 45 minutos */}
+                    <div className="absolute top-1/4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                    <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                    <div className="absolute top-3/4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                  </div>
+                );
+              })}
+              
+              {/* Linha vermelha do horário atual */}
+              {isToday && currentTimePosition >= 0 && currentTimePosition <= (24 * 64) && (
+                <div
+                  className="absolute left-0 right-0 h-0.5 bg-red-500 z-20 pointer-events-none"
+                  style={{ top: `${currentTimePosition}px` }}
+                >
+                  <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
+                </div>
+              )}
               
               {/* Agendamentos posicionados */}
               {dayAppointments.map(apt => {
                 const [hour, minute] = apt.appointment_time.split(':').map(Number);
                 const [endHour, endMinute] = apt.end_time.split(':').map(Number);
                 
-                const startMinutes = (hour - 7) * 60 + minute; // 7h é o início
-                const endMinutes = (endHour - 7) * 60 + endMinute;
+                const startMinutes = hour * 60 + minute;
+                const endMinutes = endHour * 60 + endMinute;
                 const duration = endMinutes - startMinutes;
                 
                 const top = (startMinutes / 60) * 64; // 64px = altura de cada hora
@@ -178,7 +278,7 @@ export default function BusinessCalendar() {
                 return (
                   <div
                     key={apt.id}
-                    className="absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md"
+                    className="absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10"
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,
@@ -269,11 +369,7 @@ export default function BusinessCalendar() {
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -289,10 +385,10 @@ export default function BusinessCalendar() {
         </CardHeader>
         <CardContent>
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsList className={`grid w-full ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} mb-4`}>
               <TabsTrigger value="day">Dia</TabsTrigger>
-              <TabsTrigger value="week">Semana</TabsTrigger>
-              <TabsTrigger value="month">Mês</TabsTrigger>
+              {!isMobile && <TabsTrigger value="week">Semana</TabsTrigger>}
+              {!isMobile && <TabsTrigger value="month">Mês</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="day">
@@ -389,6 +485,10 @@ export default function BusinessCalendar() {
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded border bg-blue-100 border-blue-300"></div>
                     <span className="text-sm">Concluído</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded border bg-red-100 border-red-300"></div>
+                    <span className="text-sm">Cancelado</span>
                   </div>
                 </div>
               </div>

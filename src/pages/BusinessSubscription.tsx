@@ -127,6 +127,26 @@ const BusinessSubscription = () => {
         return;
       }
 
+      // Verificar se o negócio está registrado
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", session.user.id)
+        .single();
+
+      if (!businessData) {
+        checkoutWindow?.close();
+        toast({
+          title: "Erro",
+          description: "Você precisa ter um negócio cadastrado para assinar um plano",
+          variant: "destructive",
+        });
+        navigate("/business/setup");
+        return;
+      }
+
+      console.log("Criando checkout para business:", businessData.id);
+
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { planType },
       });
@@ -210,9 +230,9 @@ const BusinessSubscription = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/dashboard/business")}
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate("/dashboard/business")} 
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -24,6 +25,23 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("ErrorBoundary capturou erro:", error, errorInfo);
+
+    // Registrar erro no banco de dados
+    supabase.functions
+      .invoke("log-error", {
+        body: {
+          error_message: error.message,
+          error_stack: error.stack,
+          error_context: {
+            componentStack: errorInfo.componentStack,
+          },
+          page_url: window.location.href,
+          user_agent: navigator.userAgent,
+        },
+      })
+      .catch((logError) => {
+        console.error("Falha ao registrar erro:", logError);
+      });
   }
 
   private handleReload = () => {

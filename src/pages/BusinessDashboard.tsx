@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power, RefreshCw, Megaphone, Settings, LogOut, Eye } from "lucide-react";
+import { Calendar, Clock, Users, DollarSign, Plus, MessageCircle, Link as LinkIcon, Copy, BarChart3, Star, X, Power, RefreshCw, Megaphone, Settings, LogOut, Eye, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { formatPhoneNumber } from "@/lib/phone-utils";
-import { format, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { format, startOfDay, endOfDay, isWithinInterval, parseISO, subDays, addDays } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -23,7 +23,9 @@ import { EditServiceDialog } from "@/components/EditServiceDialog";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit } from "lucide-react";
-import SubscriptionBanner from "@/components/SubscriptionBanner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { ContactPicker } from "@/components/ContactPicker";
 
 const BRAZIL_TZ = 'America/Sao_Paulo';
 
@@ -46,8 +48,6 @@ const BusinessDashboard = () => {
     from: startOfDay(new Date()),
     to: endOfDay(new Date(new Date().setDate(new Date().getDate() + 30))),
   });
-  const [subscription, setSubscription] = useState<any>(null);
-  const [syncingSubscription, setSyncingSubscription] = useState(false);
 
   // Service form state
   const [serviceName, setServiceName] = useState("");
@@ -56,43 +56,80 @@ const BusinessDashboard = () => {
   const [servicePrice, setServicePrice] = useState("");
   const [serviceImageUrl, setServiceImageUrl] = useState<string | null>(null);
 
+  // Carregar dados iniciais e verificar cache
   useEffect(() => {
     const initDashboard = async () => {
-      // Verificar autenticação
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/auth');
         return;
       }
 
-      // Chamar função para completar agendamentos passados
-      try {
-        await supabase.functions.invoke('complete-appointments');
-        console.log('Complete appointments function called successfully');
-      } catch (error) {
-        console.error('Error calling complete-appointments:', error);
+      // Tentar carregar do cache primeiro
+      const cachedBusiness = sessionStorage.getItem('business_data');
+      if (cachedBusiness) {
+        const parsed = JSON.parse(cachedBusiness);
+        if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // Cache válido por 5 minutos
+          setBusiness(parsed.data);
+          setLoading(false);
+        }
       }
 
-      // Buscar dados do negócio
       await fetchBusinessData();
-
-      // Sincronizar assinatura automaticamente
-      await syncSubscription();
     };
 
     initDashboard();
+  }, []);
+
+  // Auto-redirect para calendário se configurado (apenas uma vez por sessão)
+  useEffect(() => {
+    if (!business) return;
+    
+    const hasRedirected = sessionStorage.getItem('has_redirected_to_calendar');
+    
+    if (!hasRedirected && business.auto_redirect_to_calendar) {
+      sessionStorage.setItem('has_redirected_to_calendar', 'true');
+      navigate('/business/calendar');
+    }
+  }, [business, navigate]);
+
+  // Configurar Realtime apenas quando business.id estiver disponível
+  useEffect(() => {
+    if (!business?.id) return;
 
     const appointmentsChannel = supabase
       .channel("business-appointments-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
-        fetchBusinessData();
+      .on("postgres_changes", { 
+        event: "*", 
+        schema: "public", 
+        table: "appointments",
+        filter: `business_id=eq.${business.id}` 
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setAppointments(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setAppointments(prev => prev.map(app => app.id === payload.new.id ? payload.new : app));
+        } else if (payload.eventType === 'DELETE') {
+          setAppointments(prev => prev.filter(app => app.id !== payload.old.id));
+        }
       })
       .subscribe();
 
     const servicesChannel = supabase
       .channel("services-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => {
-        fetchBusinessData();
+      .on("postgres_changes", { 
+        event: "*", 
+        schema: "public", 
+        table: "services",
+        filter: `business_id=eq.${business.id}`
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setServices(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setServices(prev => prev.map(svc => svc.id === payload.new.id ? payload.new : svc));
+        } else if (payload.eventType === 'DELETE') {
+          setServices(prev => prev.filter(svc => svc.id !== payload.old.id));
+        }
       })
       .subscribe();
 
@@ -100,7 +137,7 @@ const BusinessDashboard = () => {
       supabase.removeChannel(appointmentsChannel);
       supabase.removeChannel(servicesChannel);
     };
-  }, []);
+  }, [business?.id]);
 
   const fetchBusinessData = async () => {
     try {
@@ -109,7 +146,7 @@ const BusinessDashboard = () => {
 
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
-        .select("*")
+        .select("id, name, logo_url, is_active, view_count, slug, auto_redirect_to_calendar")
         .eq("owner_id", user.id)
         .single();
 
@@ -117,37 +154,51 @@ const BusinessDashboard = () => {
 
       if (businessData) {
         setBusiness(businessData);
+        
+        // Cachear dados do business
+        sessionStorage.setItem('business_data', JSON.stringify({
+          data: businessData,
+          timestamp: Date.now()
+        }));
 
+        // Buscar apenas serviços ativos
         const { data: servicesData } = await supabase
           .from("services")
-          .select("*")
-          .eq("business_id", businessData.id);
+          .select("id, name, description, duration_minutes, price, image_url, is_active")
+          .eq("business_id", businessData.id)
+          .eq("is_active", true);
         
         setServices(servicesData || []);
+
+        // Otimização: Buscar apenas agendamentos dos últimos 30 dias e próximos 90 dias
+        const today = new Date();
+        const startDate = format(subDays(today, 30), 'yyyy-MM-dd');
+        const endDate = format(addDays(today, 90), 'yyyy-MM-dd');
 
         const { data: appointmentsData } = await supabase
           .from("appointments")
           .select(`
-            *,
-            profiles (full_name, phone),
+            id,
+            appointment_date,
+            appointment_time,
+            end_time,
+            status,
+            used_loyalty_redemption,
+            business_id,
+            service_id,
+            profiles!appointments_client_id_fkey (full_name, phone),
             appointment_services (
               service_id,
               services (name, price)
             )
           `)
           .eq("business_id", businessData.id)
-          .order("appointment_date", { ascending: true });
+          .gte("appointment_date", startDate)
+          .lte("appointment_date", endDate)
+          .order("appointment_date", { ascending: true })
+          .order("appointment_time", { ascending: true });
 
         setAppointments(appointmentsData || []);
-
-        // Fetch subscription data
-        const { data: subscriptionData } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("business_id", businessData.id)
-          .single();
-        
-        setSubscription(subscriptionData);
       }
     } catch (error) {
       console.error("Error fetching business data:", error);
@@ -157,80 +208,6 @@ const BusinessDashboard = () => {
     }
   };
 
-  const syncSubscription = async () => {
-    setSyncingSubscription(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Call the sync function
-      const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-stripe-subscription');
-      
-      if (syncError) {
-        console.error('Error syncing subscription:', syncError);
-        return;
-      }
-
-      console.log('Subscription synced successfully:', syncResult);
-      
-      // Get business_id to fetch updated subscription
-      const { data: businessData } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .maybeSingle();
-
-      if (businessData?.id) {
-        const { data: subscriptionData } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("business_id", businessData.id)
-          .maybeSingle();
-        
-        setSubscription(subscriptionData);
-      }
-    } catch (error) {
-      console.error('Error syncing subscription:', error);
-    } finally {
-      setSyncingSubscription(false);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error) {
-      console.error('Error opening customer portal:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível abrir o portal de gerenciamento.",
-      });
-    }
-  };
-
-  const calculateDaysRemaining = (endDate: string | null) => {
-    if (!endDate) return 0;
-    try {
-      const end = parseISO(endDate);
-      const today = new Date();
-      const days = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return Math.max(0, days);
-    } catch {
-      return 0;
-    }
-  };
-
-  const getSubscriptionStatusColor = (daysRemaining: number) => {
-    if (daysRemaining >= 15) return "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400";
-    if (daysRemaining >= 7) return "bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400";
-    if (daysRemaining >= 1) return "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400";
-    return "bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400";
-  };
 
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,7 +230,7 @@ const BusinessDashboard = () => {
       setServiceDescription("");
       setServiceDuration("");
       setServicePrice("");
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error: any) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
     }
@@ -285,7 +262,7 @@ const BusinessDashboard = () => {
       setServiceDuration("");
       setServicePrice("");
       setServiceImageUrl(null);
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error: any) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
     }
@@ -340,10 +317,44 @@ const BusinessDashboard = () => {
       }
       
       toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error) {
       console.error("Error updating appointment:", error);
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o agendamento." });
+    }
+  };
+
+  const handleReadyForService = async (appointmentId: string) => {
+    try {
+      toast({ title: "Enviando notificação...", description: "Informando o cliente que você está pronto." });
+      
+      const { error } = await supabase.functions.invoke('send-appointment-email', {
+        body: {
+          appointmentId,
+          type: 'ready_for_service'
+        }
+      });
+      
+      if (error) {
+        console.error('[Email] Error sending ready notification:', error);
+        toast({ 
+          title: "Erro", 
+          description: "Não foi possível enviar a notificação. Tente novamente.", 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ 
+          title: "Notificação enviada!", 
+          description: "O cliente foi avisado que você está pronto." 
+        });
+      }
+    } catch (error: any) {
+      console.error('[Email] Failed to send ready notification:', error);
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível enviar a notificação. Tente novamente.", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -370,7 +381,7 @@ const BusinessDashboard = () => {
         .catch((err) => console.error('[Email] Failed to send cancellation notification:', err));
       
       toast({ title: "Status atualizado", description: "O status do agendamento foi atualizado." });
-      fetchBusinessData();
+      // Realtime já cuida do update
     } catch (error) {
       console.error("Error updating appointment:", error);
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o agendamento." });
@@ -387,13 +398,25 @@ const BusinessDashboard = () => {
   };
 
   const handleCopyShareLink = () => {
-    const link = `${window.location.origin}/booking/${business.id}`;
+    const link = business?.slug ? `${window.location.origin}/${business.slug}` : `${window.location.origin}/booking/${business.id}`;
     navigator.clipboard.writeText(link);
     toast({ title: "Link copiado!", description: "O link de agendamento foi copiado para a área de transferência." });
   };
 
-  const handleRefresh = async () => {
+  // Debounce para evitar múltiplas requisições simultâneas
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const handleRefresh = useCallback(async () => {
+    if (debounceTimeoutRef.current) {
+      return; // Já tem um refresh em andamento
+    }
+    
     setRefreshing(true);
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      debounceTimeoutRef.current = null;
+    }, 2000);
+    
     try {
       await fetchBusinessData();
       toast({ title: "Dados atualizados!", description: "Seus dados foram atualizados com sucesso." });
@@ -402,7 +425,7 @@ const BusinessDashboard = () => {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -452,12 +475,22 @@ const BusinessDashboard = () => {
     }
   };
 
-  const todayAppointments = appointments
-    .filter(
-      (app) => format(parseISO(app.appointment_date), "yyyy-MM-dd") === formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd")
-    )
-    .sort((a, b) => {
-      // Definir prioridade: pendentes primeiro, depois confirmados, depois concluídos e cancelados
+  // Otimizar cálculos com Map para lookups O(1)
+  const appointmentsByDate = useMemo(() => {
+    const map = new Map<string, any[]>();
+    appointments.forEach(app => {
+      const date = format(parseISO(app.appointment_date), "yyyy-MM-dd");
+      if (!map.has(date)) map.set(date, []);
+      map.get(date)!.push(app);
+    });
+    return map;
+  }, [appointments]);
+
+  const todayAppointments = useMemo(() => {
+    const today = formatInTimeZone(toZonedTime(new Date(), BRAZIL_TZ), BRAZIL_TZ, "yyyy-MM-dd");
+    const todayApps = appointmentsByDate.get(today) || [];
+    
+    return todayApps.sort((a, b) => {
       const statusPriority: Record<string, number> = {
         pending: 1,
         confirmed: 2,
@@ -472,45 +505,67 @@ const BusinessDashboard = () => {
         return priorityA - priorityB;
       }
       
-      // Se tiverem o mesmo status, ordenar por horário
       return a.appointment_time.localeCompare(b.appointment_time);
     });
+  }, [appointmentsByDate]);
 
-  const filteredAppointments = appointments
-    .filter((app) => {
-      const appDate = parseISO(app.appointment_date);
-      return isWithinInterval(appDate, { start: dateRange.from, end: dateRange.to });
-    })
-    .sort((a, b) => {
-      // Definir prioridade: pendentes primeiro, depois confirmados, depois concluídos e cancelados
-      const statusPriority: Record<string, number> = {
-        pending: 1,
-        confirmed: 2,
-        completed: 3,
-        cancelled: 4,
-      };
-      
-      const priorityA = statusPriority[a.status] || 5;
-      const priorityB = statusPriority[b.status] || 5;
-      
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB;
+  const filteredAppointments = useMemo(() => {
+    return appointments
+      .filter((app) => {
+        const appDate = parseISO(app.appointment_date);
+        return isWithinInterval(appDate, { start: dateRange.from, end: dateRange.to });
+      })
+      .sort((a, b) => {
+        const statusPriority: Record<string, number> = {
+          pending: 1,
+          confirmed: 2,
+          completed: 3,
+          cancelled: 4,
+        };
+        
+        const priorityA = statusPriority[a.status] || 5;
+        const priorityB = statusPriority[b.status] || 5;
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        
+        const dateCompare = a.appointment_date.localeCompare(b.appointment_date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.appointment_time.localeCompare(b.appointment_time);
+      });
+  }, [appointments, dateRange]);
+
+  const { completedAppointments, totalRevenue, cancelledAppointments, pendingCount } = useMemo(() => {
+    // Usar Set para status checks O(1)
+    const completedSet = new Set<string>();
+    const cancelledSet = new Set<string>();
+    let pending = 0;
+    let revenue = 0;
+    
+    appointments.forEach(app => {
+      if (app.status === "completed") {
+        completedSet.add(app.id);
+        const appointmentTotal = app.appointment_services?.reduce((sum: number, as: any) => 
+          sum + Number(as.services?.price || 0), 0) || 0;
+        revenue += appointmentTotal;
+      } else if (app.status === "cancelled") {
+        cancelledSet.add(app.id);
+      } else if (app.status === "pending") {
+        pending++;
       }
-      
-      // Se tiverem o mesmo status, ordenar por data e horário
-      const dateCompare = a.appointment_date.localeCompare(b.appointment_date);
-      if (dateCompare !== 0) return dateCompare;
-      return a.appointment_time.localeCompare(b.appointment_time);
     });
-
-  const completedAppointments = appointments.filter((app) => app.status === "completed");
-  const totalRevenue = completedAppointments.reduce((sum, app) => {
-    const appointmentTotal = app.appointment_services?.reduce((serviceSum: number, as: any) => 
-      serviceSum + Number(as.services?.price || 0), 0) || 0;
-    return sum + appointmentTotal;
-  }, 0);
-
-  const cancelledAppointments = filteredAppointments.filter((app) => app.status === "cancelled");
+    
+    const completed = appointments.filter(app => completedSet.has(app.id));
+    const cancelled = filteredAppointments.filter((app) => app.status === "cancelled");
+    
+    return { 
+      completedAppointments: completed, 
+      totalRevenue: revenue,
+      cancelledAppointments: cancelled,
+      pendingCount: pending
+    };
+  }, [appointments, filteredAppointments]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
@@ -583,6 +638,27 @@ const BusinessDashboard = () => {
           )}
           {(appointment.status === "pending" || appointment.status === "confirmed") && (
             <>
+              {/* Botão "Estou Pronto" - aparece 15 minutos antes do horário */}
+              {(() => {
+                const now = toZonedTime(new Date(), BRAZIL_TZ);
+                const appointmentDateTime = toZonedTime(
+                  new Date(`${appointment.appointment_date}T${appointment.appointment_time}`),
+                  BRAZIL_TZ
+                );
+                const fifteenMinutesBefore = new Date(appointmentDateTime.getTime() - 15 * 60 * 1000);
+                const isToday = format(appointmentDateTime, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+                const canShowReadyButton = isToday && now >= fifteenMinutesBefore && now < appointmentDateTime;
+                
+                return canShowReadyButton && (
+                  <Button
+                    size="sm"
+                    className="min-h-10 bg-green-600 hover:bg-green-700"
+                    onClick={() => handleReadyForService(appointment.id)}
+                  >
+                    ✓ Estou Pronto
+                  </Button>
+                );
+              })()}
               <Button
                 size="sm"
                 className="min-h-10"
@@ -614,11 +690,7 @@ const BusinessDashboard = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!business) {
@@ -640,37 +712,47 @@ const BusinessDashboard = () => {
       
       <main className="container mx-auto px-4 py-8">
         {/* Header with Business Logo */}
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="mb-6 flex items-start justify-between gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
             {business?.logo_url && (
               <img 
                 src={business.logo_url} 
                 alt={business.name}
-                className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover"
+                className="w-10 h-10 md:w-16 md:h-16 rounded-lg object-cover flex-shrink-0"
               />
             )}
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold">{business?.name || "Dashboard"}</h1>
+            <div className="min-w-0">
+              <h1 className="text-lg md:text-3xl font-bold truncate">{business?.name || "Dashboard"}</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Eye className="h-4 w-4" />
-                <span className="text-sm">{business?.view_count || 0}</span>
+                <Eye className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="text-xs md:text-sm">{business?.view_count || 0}</span>
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-1 md:gap-2 ml-auto">
             <Button 
               variant="outline" 
               onClick={() => window.location.reload()}
               size="sm"
+              className="flex-shrink-0 px-2 md:px-4"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Atualizar
+              <RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden md:inline ml-1 md:ml-2">Atualizar</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleCopyShareLink}
+              size="sm"
+              className="flex-shrink-0 px-2 md:px-4"
+            >
+              <LinkIcon className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden md:inline ml-1 md:ml-2">Copiar Link</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Menu
+                <Button variant="outline" size="sm" className="flex-shrink-0 px-2 md:px-4">
+                  <Settings className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden md:inline ml-1 md:ml-2">Menu</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -710,6 +792,10 @@ const BusinessDashboard = () => {
                   <Settings className="mr-2 h-4 w-4" />
                   Configurações
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/business/subscription")}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Assinatura
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sair
@@ -741,75 +827,6 @@ const BusinessDashboard = () => {
           </CardContent>
         </Card>
 
-        <SubscriptionBanner />
-
-        {subscription && (
-          <Card className={`mb-8 border-2 ${getSubscriptionStatusColor(calculateDaysRemaining(subscription.current_period_end))}`}>
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-                    <Star className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-bold text-lg">
-                        Plano {subscription.plan_type === 'standard' ? 'Standard' : 'Professional'}
-                      </p>
-                      <Badge className={subscription.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}>
-                        {subscription.status === 'active' ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {calculateDaysRemaining(subscription.current_period_end)} dias restantes
-                      {subscription.current_period_end && (
-                        <> • Próxima cobrança: {format(parseISO(subscription.current_period_end), "dd/MM/yyyy")}</>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleManageSubscription} variant="default">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Gerenciar Assinatura
-                  </Button>
-                  <Button 
-                    onClick={syncSubscription} 
-                    variant="outline"
-                    disabled={syncingSubscription}
-                  >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${syncingSubscription ? 'animate-spin' : ''}`} />
-                    Sincronizar
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {!subscription && (
-          <Card className="mb-8 border-2 border-orange-500/20 bg-orange-500/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-500/10">
-                    <Star className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-lg">Nenhum plano ativo</p>
-                    <p className="text-sm text-muted-foreground">
-                      Assine um plano para desbloquear recursos avançados
-                    </p>
-                  </div>
-                </div>
-                <Button onClick={() => navigate('/business/subscription')} variant="default">
-                  Ver Planos
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -827,9 +844,7 @@ const BusinessDashboard = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {appointments.filter((app) => app.status === "pending").length}
-              </div>
+              <div className="text-2xl font-bold">{pendingCount}</div>
             </CardContent>
           </Card>
 

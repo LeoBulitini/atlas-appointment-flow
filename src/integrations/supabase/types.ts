@@ -251,6 +251,7 @@ export type Database = {
         Row: {
           address: string
           auto_confirm_appointments: boolean | null
+          auto_redirect_to_calendar: boolean | null
           category: string
           city: string
           cover_image_url: string | null
@@ -269,6 +270,7 @@ export type Database = {
           phone: string
           postal_code: string | null
           price_range: string | null
+          slug: string | null
           state: string
           subscription_id: string | null
           updated_at: string | null
@@ -277,6 +279,7 @@ export type Database = {
         Insert: {
           address: string
           auto_confirm_appointments?: boolean | null
+          auto_redirect_to_calendar?: boolean | null
           category: string
           city: string
           cover_image_url?: string | null
@@ -295,6 +298,7 @@ export type Database = {
           phone: string
           postal_code?: string | null
           price_range?: string | null
+          slug?: string | null
           state: string
           subscription_id?: string | null
           updated_at?: string | null
@@ -303,6 +307,7 @@ export type Database = {
         Update: {
           address?: string
           auto_confirm_appointments?: boolean | null
+          auto_redirect_to_calendar?: boolean | null
           category?: string
           city?: string
           cover_image_url?: string | null
@@ -321,6 +326,7 @@ export type Database = {
           phone?: string
           postal_code?: string | null
           price_range?: string | null
+          slug?: string | null
           state?: string
           subscription_id?: string | null
           updated_at?: string | null
@@ -679,6 +685,135 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notification_logs: {
+        Row: {
+          body: string
+          data: Json | null
+          id: string
+          notification_type: string
+          sent_at: string | null
+          success: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          data?: Json | null
+          id?: string
+          notification_type: string
+          sent_at?: string | null
+          success: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          data?: Json | null
+          id?: string
+          notification_type?: string
+          sent_at?: string | null
+          success?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_notification_preferences: {
+        Row: {
+          appointment_cancelled: boolean | null
+          appointment_changes: boolean | null
+          appointment_completed: boolean | null
+          appointment_confirmed: boolean | null
+          appointment_created: boolean | null
+          appointment_reminder: boolean | null
+          appointment_rescheduled: boolean | null
+          birthday_message: boolean | null
+          created_at: string | null
+          financial_alerts: boolean | null
+          id: string
+          loyalty_updates: boolean | null
+          marketing_messages: boolean | null
+          new_appointment: boolean | null
+          new_review: boolean | null
+          stock_alerts: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          appointment_cancelled?: boolean | null
+          appointment_changes?: boolean | null
+          appointment_completed?: boolean | null
+          appointment_confirmed?: boolean | null
+          appointment_created?: boolean | null
+          appointment_reminder?: boolean | null
+          appointment_rescheduled?: boolean | null
+          birthday_message?: boolean | null
+          created_at?: string | null
+          financial_alerts?: boolean | null
+          id?: string
+          loyalty_updates?: boolean | null
+          marketing_messages?: boolean | null
+          new_appointment?: boolean | null
+          new_review?: boolean | null
+          stock_alerts?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          appointment_cancelled?: boolean | null
+          appointment_changes?: boolean | null
+          appointment_completed?: boolean | null
+          appointment_confirmed?: boolean | null
+          appointment_created?: boolean | null
+          appointment_reminder?: boolean | null
+          appointment_rescheduled?: boolean | null
+          birthday_message?: boolean | null
+          created_at?: string | null
+          financial_alerts?: boolean | null
+          id?: string
+          loyalty_updates?: boolean | null
+          marketing_messages?: boolean | null
+          new_appointment?: boolean | null
+          new_review?: boolean | null
+          stock_alerts?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string | null
+          device_type: string
+          id: string
+          is_active: boolean | null
+          subscription: Json
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_type: string
+          id?: string
+          is_active?: boolean | null
+          subscription: Json
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean | null
+          subscription?: Json
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           appointment_id: string | null
@@ -887,21 +1022,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_birthdays: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      check_birthdays: { Args: never; Returns: undefined }
       check_subscription_access: {
         Args: { p_business_id: string }
         Returns: Json
       }
-      complete_past_appointments: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      create_appointment_if_available: {
-        Args:
-          | {
+      complete_past_appointments: { Args: never; Returns: undefined }
+      create_appointment_if_available:
+        | {
+            Args: {
+              p_appointment_date: string
+              p_appointment_time: string
+              p_business_id: string
+              p_client_id: string
+              p_end_time: string
+              p_notes: string
+              p_service_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
               p_appointment_date: string
               p_appointment_time: string
               p_auto_confirm?: boolean
@@ -912,245 +1053,14 @@ export type Database = {
               p_service_id: string
               p_used_loyalty_redemption?: boolean
             }
-          | {
-              p_appointment_date: string
-              p_appointment_time: string
-              p_business_id: string
-              p_client_id: string
-              p_end_time: string
-              p_notes: string
-              p_service_id: string
-            }
-        Returns: Json
-      }
-      gbt_bit_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bool_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bool_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bpchar_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bytea_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_cash_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_cash_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_date_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_date_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_enum_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_enum_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float4_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float4_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float8_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float8_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_inet_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int2_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int2_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int4_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int4_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int8_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int8_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_intv_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_intv_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_intv_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad8_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad8_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_numeric_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_oid_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_oid_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_text_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_time_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_time_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_timetz_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_ts_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_ts_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_tstz_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_uuid_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_uuid_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_var_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_var_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey_var_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey_var_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey16_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey16_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey2_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey2_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey32_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey32_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey4_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey4_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey8_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey8_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
+            Returns: Json
+          }
+      generate_slug: { Args: { name: string }; Returns: string }
       increment_business_views: {
         Args: { business_uuid: string }
         Returns: undefined
       }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       appointment_status: "pending" | "confirmed" | "completed" | "cancelled"

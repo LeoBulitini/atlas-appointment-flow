@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar, Clock } from "lucide-react";
+import { Plus, Calendar, Clock, CreditCard, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface FloatingActionButtonProps {
   onQuickBooking?: () => void;
@@ -12,7 +14,9 @@ interface FloatingActionButtonProps {
 export default function FloatingActionButton({ onQuickBooking }: FloatingActionButtonProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
 
   if (!isMobile) return null;
 
@@ -25,7 +29,48 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
 
   const handleSettingsClick = () => {
     setShowMenu(false);
-    navigate("/settings?tab=hours");
+    navigate("/business/settings?tab=hours");
+  };
+
+  const handleSubscriptionClick = async () => {
+    try {
+      setLoadingPortal(true);
+      setShowMenu(false);
+      
+      // Abrir janela imediatamente no clique (iOS Safari)
+      const portalWindow = window.open('about:blank', '_blank');
+      
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        // Atualizar URL da janela já aberta
+        if (portalWindow) {
+          portalWindow.location.href = data.url;
+        } else {
+          // Fallback se popup foi bloqueado
+          window.location.href = data.url;
+        }
+      } else {
+        portalWindow?.close();
+        throw new Error("URL do portal não foi retornada");
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível abrir o portal de gerenciamento. Verifique se você possui uma assinatura ativa.",
+      });
+    } finally {
+      setLoadingPortal(false);
+    }
+  };
+
+  const handleCalendarClick = () => {
+    setShowMenu(false);
+    navigate("/business/calendar");
   };
 
   return (
@@ -60,6 +105,19 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
               </div>
             </Button>
             <Button
+              onClick={handleCalendarClick}
+              className="w-full justify-start text-left h-auto py-4"
+              variant="outline"
+            >
+              <CalendarDays className="mr-3 h-5 w-5" />
+              <div>
+                <div className="font-semibold">Ver Calendário</div>
+                <div className="text-sm text-muted-foreground">
+                  Visualizar todos os agendamentos
+                </div>
+              </div>
+            </Button>
+            <Button
               onClick={handleSettingsClick}
               className="w-full justify-start text-left h-auto py-4"
               variant="outline"
@@ -69,6 +127,20 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
                 <div className="font-semibold">Ajustar Horários</div>
                 <div className="text-sm text-muted-foreground">
                   Configurar horários de funcionamento
+                </div>
+              </div>
+            </Button>
+            <Button
+              onClick={handleSubscriptionClick}
+              disabled={loadingPortal}
+              className="w-full justify-start text-left h-auto py-4"
+              variant="outline"
+            >
+              <CreditCard className="mr-3 h-5 w-5" />
+              <div>
+                <div className="font-semibold">Assinatura</div>
+                <div className="text-sm text-muted-foreground">
+                  {loadingPortal ? "Abrindo portal..." : "Gerenciar plano e pagamento"}
                 </div>
               </div>
             </Button>

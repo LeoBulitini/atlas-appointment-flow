@@ -109,7 +109,7 @@ const SubscriptionGuard = ({ children, requiredPlan }: SubscriptionGuardProps) =
               {subscriptionStatus?.message || "Para continuar gerenciando sua empresa com todos os recursos do ATLAS, escolha um de nossos planos."}
             </p>
             <p className="text-sm text-muted-foreground/70">
-              ✓ 14 dias de teste grátis • ✓ Cancele quando quiser
+              ✓ 7 dias de teste grátis • ✓ Cancele quando quiser
             </p>
           </div>
           <a 

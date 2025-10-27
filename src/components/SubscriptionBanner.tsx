@@ -59,14 +59,14 @@ const SubscriptionBanner = () => {
   if (!has_access) return null;
 
   // Don't show banner if everything is fine
-  if (status === "active" && days_remaining > 7) return null;
+  if (status === "active" && days_remaining > 5) return null;
 
   const getPlanLabel = (plan: string) => {
     return plan === "standard" ? "Standard" : "Professional";
   };
 
-  // Trial ending soon
-  if (status === "trialing" && days_remaining <= 7) {
+  // Trial ending soon (show warning when 5 days or less remaining)
+  if (status === "trialing" && days_remaining <= 5) {
     return (
       <Alert className="mb-6 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
         <Clock className="h-4 w-4 text-amber-600" />

@@ -178,12 +178,6 @@ const Auth = () => {
     setPhone(masked);
   };
 
-  const getMinBirthDate = () => {
-    const today = new Date();
-    const minDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
-    return minDate.toISOString().split('T')[0];
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-elegant">
@@ -284,7 +278,7 @@ const Auth = () => {
                         onChange={(e) => setBirthDate(e.target.value)}
                         required
                         max={new Date().toISOString().split('T')[0]}
-                        min={getMinBirthDate()}
+                        min="1900-01-01"
                         className="w-full"
                       />
                 </div>

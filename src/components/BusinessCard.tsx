@@ -41,20 +41,20 @@ const BusinessCard = ({
 
   return (
     <Card 
-      className="group overflow-hidden transition-smooth hover:shadow-elegant cursor-pointer"
+      className="group overflow-hidden transition-smooth hover-hover:shadow-elegant cursor-pointer"
       onClick={handleCardClick}
     >
       <div className="relative h-48 overflow-hidden">
         <img
           src={image}
           alt={name}
-          className="h-full w-full object-cover transition-smooth group-hover:scale-110"
+          className="h-full w-full object-cover transition-smooth group-hover-hover:scale-110"
         />
       </div>
       
       <CardContent className="p-4">
         <div className="mb-2">
-          <h3 className="text-lg font-semibold mb-1 group-hover:text-primary transition-smooth">
+          <h3 className="text-lg font-semibold mb-1 group-hover-hover:text-primary transition-smooth">
             {name}
           </h3>
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">

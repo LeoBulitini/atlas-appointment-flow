@@ -11,7 +11,7 @@ const corsHeaders = {
 
 interface EmailRequest {
   appointmentId: string;
-  type: 'new_appointment' | 'appointment_confirmed' | 'appointment_rescheduled' | 'appointment_cancelled' | 'appointment_completed';
+  type: 'new_appointment' | 'appointment_confirmed' | 'appointment_rescheduled' | 'appointment_cancelled' | 'appointment_completed' | 'ready_for_service';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -447,6 +447,81 @@ function generateEmailContent(
             
             <div class="info-box">
               <h3>📋 Detalhes</h3>
+              <div class="info-row"><span class="label">Data:</span> ${appointmentDate}</div>
+              <div class="info-row"><span class="label">Horário:</span> ${appointmentTime}</div>
+              
+              <h4 style="margin-top: 20px;">Serviços:</h4>
+              <ul>${servicesHtml}</ul>
+            </div>
+            
+            <div class="footer">
+              <p>Este é um e-mail automático, por favor não responda.</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+
+    case 'ready_for_service':
+      clientSubject = `✅ ${business.name} está pronto para seu atendimento!`;
+      clientHtml = `
+        ${baseStyle}
+        <div class="container">
+          <div class="header" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+            <h1>✅ Estamos Prontos Para Você!</h1>
+          </div>
+          <div class="content">
+            <p>Olá <strong>${client.full_name}</strong>,</p>
+            <p style="font-size: 18px; color: #10B981; font-weight: bold;">Ótimas notícias! Já estamos prontos e aguardando você para o seu atendimento! 😊</p>
+            
+            <div class="info-box" style="border-left-color: #10B981;">
+              <h3>📋 Detalhes do Seu Agendamento</h3>
+              <div class="info-row"><span class="label">Data:</span> ${appointmentDate}</div>
+              <div class="info-row"><span class="label">Horário:</span> ${appointmentTime}</div>
+              <div class="info-row"><span class="label">Duração:</span> ${totalDuration} minutos</div>
+              
+              <h4 style="margin-top: 20px;">Serviços:</h4>
+              <ul>${servicesHtml}</ul>
+            </div>
+
+            <div class="info-box" style="border-left-color: #10B981;">
+              <h3>📍 Endereço</h3>
+              <p>${business.address}, ${business.city} - ${business.state}</p>
+              ${business.phone ? `<p><strong>Telefone:</strong> ${business.phone}</p>` : ''}
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding: 25px; background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border-radius: 12px; border: 2px solid #10B981;">
+              <p style="font-size: 20px; margin: 0; color: #065F46;">
+                🎉 <strong>Estamos te esperando!</strong> 🎉
+              </p>
+              <p style="font-size: 16px; margin: 10px 0 0 0; color: #047857;">
+                Pode chegar quando quiser! 💚
+              </p>
+            </div>
+            
+            <div class="footer">
+              <p>Este é um e-mail automático, por favor não responda.</p>
+              <p style="color: #999; font-size: 12px;">AtlasBook - Sistema de Agendamentos</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      businessSubject = `✅ Notificação Enviada - ${client.full_name} foi avisado`;
+      businessHtml = `
+        ${baseStyle}
+        <div class="container">
+          <div class="header" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+            <h1>✅ Notificação Enviada</h1>
+          </div>
+          <div class="content">
+            <p>O cliente <strong>${client.full_name}</strong> foi notificado que você já está pronto para o atendimento.</p>
+            
+            <div class="info-box" style="border-left-color: #10B981;">
+              <h3>📋 Detalhes do Agendamento</h3>
+              <div class="info-row"><span class="label">Cliente:</span> ${client.full_name}</div>
+              ${client.email ? `<div class="info-row"><span class="label">E-mail:</span> ${client.email}</div>` : ''}
               <div class="info-row"><span class="label">Data:</span> ${appointmentDate}</div>
               <div class="info-row"><span class="label">Horário:</span> ${appointmentTime}</div>
               
