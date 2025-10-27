@@ -67,14 +67,12 @@ export async function uploadBusinessLogo(
   businessId: string,
   file: File
 ): Promise<{ url: string | null; error?: string }> {
-  // Validar arquivo
   const validation = validateImageFile(file);
   if (!validation.valid) {
     return { url: null, error: validation.error };
   }
   
   try {
-    // Deletar logo antigo se existir
     const { data: existingFiles } = await supabase.storage
       .from('business-logos')
       .list(businessId);
@@ -83,7 +81,6 @@ export async function uploadBusinessLogo(
       await deleteStorageFile('business-logos', `${businessId}/${existingFiles[0].name}`);
     }
     
-    // Upload do novo logo
     const fileExt = file.name.split('.').pop();
     const fileName = `logo_${Date.now()}.${fileExt}`;
     const filePath = `${businessId}/${fileName}`;
@@ -94,7 +91,6 @@ export async function uploadBusinessLogo(
     
     if (uploadError) throw uploadError;
     
-    // Obter URL pública
     const { data: { publicUrl } } = supabase.storage
       .from('business-logos')
       .getPublicUrl(filePath);
@@ -114,14 +110,12 @@ export async function uploadBusinessCover(
   businessId: string,
   file: File
 ): Promise<{ url: string | null; error?: string }> {
-  // Validar arquivo
   const validation = validateImageFile(file, MAX_PORTFOLIO_SIZE);
   if (!validation.valid) {
     return { url: null, error: validation.error };
   }
   
   try {
-    // Deletar cover antigo se existir
     const { data: existingFiles } = await supabase.storage
       .from('business-covers')
       .list(businessId);
@@ -130,7 +124,6 @@ export async function uploadBusinessCover(
       await deleteStorageFile('business-covers', `${businessId}/${existingFiles[0].name}`);
     }
     
-    // Upload da nova capa
     const fileExt = file.name.split('.').pop();
     const fileName = `cover_${Date.now()}.${fileExt}`;
     const filePath = `${businessId}/${fileName}`;
@@ -141,7 +134,6 @@ export async function uploadBusinessCover(
     
     if (uploadError) throw uploadError;
     
-    // Obter URL pública
     const { data: { publicUrl } } = supabase.storage
       .from('business-covers')
       .getPublicUrl(filePath);
@@ -159,29 +151,17 @@ export async function uploadBusinessCover(
  */
 export async function uploadServiceImage(
   businessId: string,
-  serviceId: string,
   file: File
 ): Promise<{ url: string | null; error?: string }> {
-  // Validar arquivo
   const validation = validateImageFile(file);
   if (!validation.valid) {
     return { url: null, error: validation.error };
   }
   
   try {
-    // Deletar imagem antiga se existir
-    const { data: existingFiles } = await supabase.storage
-      .from('service-images')
-      .list(serviceId);
-    
-    if (existingFiles && existingFiles.length > 0) {
-      await deleteStorageFile('service-images', `${serviceId}/${existingFiles[0].name}`);
-    }
-    
-    // Upload da nova imagem
     const fileExt = file.name.split('.').pop();
     const fileName = `service_${Date.now()}.${fileExt}`;
-    const filePath = `${serviceId}/${fileName}`;
+    const filePath = `${businessId}/services/${fileName}`;
     
     const { error: uploadError } = await supabase.storage
       .from('service-images')
@@ -189,7 +169,6 @@ export async function uploadServiceImage(
     
     if (uploadError) throw uploadError;
     
-    // Obter URL pública
     const { data: { publicUrl } } = supabase.storage
       .from('service-images')
       .getPublicUrl(filePath);
@@ -207,10 +186,8 @@ export async function uploadServiceImage(
  */
 export async function uploadPortfolioMedia(
   businessId: string,
-  portfolioId: string,
   file: File
 ): Promise<{ url: string | null; mediaType: 'image' | 'video'; error?: string }> {
-  // Validar arquivo
   const validation = validatePortfolioFile(file);
   if (!validation.valid) {
     return { url: null, mediaType: 'image', error: validation.error };
@@ -219,10 +196,9 @@ export async function uploadPortfolioMedia(
   const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
   
   try {
-    // Upload da mídia
     const fileExt = file.name.split('.').pop();
     const fileName = `portfolio_${Date.now()}.${fileExt}`;
-    const filePath = `${businessId}/${fileName}`;
+    const filePath = `${businessId}/portfolio/${fileName}`;
     
     const { error: uploadError } = await supabase.storage
       .from('portfolio-media')
@@ -230,7 +206,6 @@ export async function uploadPortfolioMedia(
     
     if (uploadError) throw uploadError;
     
-    // Obter URL pública
     const { data: { publicUrl } } = supabase.storage
       .from('portfolio-media')
       .getPublicUrl(filePath);
@@ -243,20 +218,21 @@ export async function uploadPortfolioMedia(
 }
 
 /**
- * Deleta a imagem de um serviço
+ * Deleta a imagem de um serviço usando sua URL
  */
-export async function deleteServiceImage(serviceId: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteServiceImage(imageUrl: string): Promise<{ success: boolean; error?: string }> {
+  if (!imageUrl) {
+    return { success: true };
+  }
+
   try {
-    const { data: files } = await supabase.storage
-      .from('service-images')
-      .list(serviceId);
-    
-    if (files && files.length > 0) {
-      const filePaths = files.map(f => `${serviceId}/${f.name}`);
-      return await deleteStorageFile('service-images', filePaths[0]);
+    const urlParts = imageUrl.split('/service-images/');
+    if (urlParts.length < 2) {
+      return { success: false, error: 'URL inválida' };
     }
     
-    return { success: true };
+    const filePath = urlParts[1];
+    return await deleteStorageFile('service-images', filePath);
   } catch (error: any) {
     console.error('Error deleting service image:', error);
     return { success: false, error: error.message };
@@ -264,11 +240,10 @@ export async function deleteServiceImage(serviceId: string): Promise<{ success: 
 }
 
 /**
- * Deleta a mídia do portfolio
+ * Deleta a mídia do portfolio usando sua URL
  */
 export async function deletePortfolioMedia(portfolioId: string, mediaUrl: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Extrair o path da URL pública
     const urlParts = mediaUrl.split('/portfolio-media/');
     if (urlParts.length !== 2) {
       return { success: false, error: 'URL inválida' };

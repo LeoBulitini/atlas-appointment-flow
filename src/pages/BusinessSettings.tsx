@@ -232,7 +232,7 @@ export default function BusinessSettings() {
     
     setLoading(true);
     const { uploadServiceImage } = await import("@/lib/storage-utils");
-    const { url, error } = await uploadServiceImage(business.id, editingService.id, file);
+    const { url, error } = await uploadServiceImage(business.id, file);
     setLoading(false);
     
     if (error) {
@@ -246,12 +246,9 @@ export default function BusinessSettings() {
     if (!e.target.files || e.target.files.length === 0 || !business) return;
     const file = e.target.files[0];
     
-    // Criar um ID temporário para preview
-    const tempId = `temp_${Date.now()}`;
-    
     setLoading(true);
     const { uploadServiceImage } = await import("@/lib/storage-utils");
-    const { url, error } = await uploadServiceImage(business.id, tempId, file);
+    const { url, error } = await uploadServiceImage(business.id, file);
     setLoading(false);
     
     if (error) {
@@ -386,11 +383,7 @@ export default function BusinessSettings() {
 
     // Upload da mídia
     const { uploadPortfolioMedia } = await import("@/lib/storage-utils");
-    const { url, error: uploadError } = await uploadPortfolioMedia(
-      business.id,
-      portfolioItem.id,
-      file
-    );
+    const { url, error: uploadError } = await uploadPortfolioMedia(business.id, file);
 
     if (uploadError || !url) {
       // Se falhou o upload, deletar o item criado

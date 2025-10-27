@@ -172,7 +172,7 @@ export type Database = {
           description: string | null
           display_order: number | null
           id: string
-          media_data: string
+          media_data: string | null
           media_type: string
         }
         Insert: {
@@ -181,7 +181,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
-          media_data: string
+          media_data?: string | null
           media_type: string
         }
         Update: {
@@ -190,7 +190,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
-          media_data?: string
+          media_data?: string | null
           media_type?: string
         }
         Relationships: [

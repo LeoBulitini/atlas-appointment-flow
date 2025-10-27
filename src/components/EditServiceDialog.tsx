@@ -63,8 +63,7 @@ export function EditServiceDialog({
       
       // Upload para storage
       const { uploadServiceImage } = await import("@/lib/storage-utils");
-      const serviceId = `temp_${Date.now()}`; // ID temporário será substituído no submit
-      const { url, error } = await uploadServiceImage(businessData.id, serviceId, file);
+      const { url, error } = await uploadServiceImage(businessData.id, file);
       
       if (error) {
         console.error("Upload error:", error);
