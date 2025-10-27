@@ -76,6 +76,7 @@ export default function BusinessCalendar() {
         .eq("business_id", businessId)
         .gte("appointment_date", startDate)
         .lte("appointment_date", endDate)
+        .neq("status", "cancelled")
         .order("appointment_date", { ascending: true })
         .order("appointment_time", { ascending: true });
 
@@ -388,10 +389,6 @@ export default function BusinessCalendar() {
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded border bg-blue-100 border-blue-300"></div>
                     <span className="text-sm">Concluído</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded border bg-red-100 border-red-300"></div>
-                    <span className="text-sm">Cancelado</span>
                   </div>
                 </div>
               </div>
