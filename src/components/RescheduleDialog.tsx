@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format, parse, addMinutes, isBefore, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ServiceSelectionDialog } from "@/components/ServiceSelectionDialog";
 
 interface Service {
   id: string;
@@ -45,6 +45,7 @@ export function RescheduleDialog({
   const [selectedTime, setSelectedTime] = useState(currentTime);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [business, setBusiness] = useState<any>(null);
+  const [showServiceDialog, setShowServiceDialog] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -211,12 +212,8 @@ export function RescheduleDialog({
     setAvailableSlots(slots);
   };
 
-  const handleServiceToggle = (serviceId: string) => {
-    setSelectedServices(prev =>
-      prev.includes(serviceId)
-        ? prev.filter(id => id !== serviceId)
-        : [...prev, serviceId]
-    );
+  const handleServiceConfirm = (serviceIds: string[]) => {
+    setSelectedServices(serviceIds);
   };
 
   const handleSubmit = async () => {
@@ -357,23 +354,24 @@ export function RescheduleDialog({
         <div className="space-y-6 py-4">
           <div>
             <Label className="text-base font-semibold mb-3 block">Serviços</Label>
-            <div className="space-y-2">
-              {services.map((service) => (
-                <div key={service.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`service-${service.id}`}
-                    checked={selectedServices.includes(service.id)}
-                    onCheckedChange={() => handleServiceToggle(service.id)}
-                  />
-                  <label
-                    htmlFor={`service-${service.id}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {service.name} - R$ {service.price.toFixed(2)} ({service.duration_minutes}min)
-                  </label>
-                </div>
-              ))}
-            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowServiceDialog(true)}
+              className="w-full justify-start"
+            >
+              {selectedServices.length === 0 
+                ? "Selecionar serviços" 
+                : `${selectedServices.length} serviço${selectedServices.length > 1 ? 's' : ''} selecionado${selectedServices.length > 1 ? 's' : ''}`
+              }
+            </Button>
+            {selectedServices.length > 0 && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                {services
+                  .filter(s => selectedServices.includes(s.id))
+                  .map(s => s.name)
+                  .join(', ')}
+              </div>
+            )}
           </div>
 
           <div>
@@ -412,10 +410,18 @@ export function RescheduleDialog({
             </div>
           )}
 
-          <Button onClick={handleSubmit} disabled={loading} className="w-full">
+          <Button onClick={handleSubmit} disabled={loading || selectedServices.length === 0} className="w-full">
             {loading ? "Alterando..." : "Confirmar Alteração"}
           </Button>
         </div>
+
+        <ServiceSelectionDialog
+          open={showServiceDialog}
+          onOpenChange={setShowServiceDialog}
+          services={services}
+          selectedServices={selectedServices}
+          onConfirm={handleServiceConfirm}
+        />
       </DialogContent>
     </Dialog>
   );

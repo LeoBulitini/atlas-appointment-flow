@@ -15,6 +15,10 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
 import { toast } from "sonner";
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useDraggableAppointment } from '@/hooks/useDraggableAppointment';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Appointment {
   id: string;
@@ -43,6 +47,21 @@ export default function BusinessCalendar() {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+  // Drag & Drop sensors
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 10,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    })
+  );
 
   useEffect(() => {
     checkAuth();
@@ -109,6 +128,19 @@ export default function BusinessCalendar() {
       setLoading(false);
     }
   };
+
+  // Drag & Drop hook (after fetchAppointments is declared)
+  const {
+    activeId,
+    draggedTime,
+    handleDragStart,
+    handleDragMove,
+    handleDragEnd,
+    handleDragCancel,
+  } = useDraggableAppointment({
+    appointments,
+    onUpdate: fetchAppointments,
+  });
 
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
@@ -223,6 +255,81 @@ export default function BusinessCalendar() {
     setShowRescheduleDialog(true);
   };
 
+  // Draggable Appointment Card Component
+  const DraggableAppointmentCard = ({ 
+    apt, 
+    top, 
+    height, 
+    isDragging,
+    draggedTime,
+    getStatusBgColor,
+    handleReadyForService,
+    openRescheduleDialog,
+    openCancelDialog 
+  }: any) => {
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({
+      id: apt.id,
+      data: apt,
+      disabled: apt.status === 'cancelled' || apt.status === 'completed',
+    });
+
+    const style = {
+      top: `${top}px`,
+      height: `${height}px`,
+      backgroundColor: getStatusBgColor(apt.status),
+      minHeight: '40px',
+      transform: CSS.Translate.toString(transform),
+      transition: isDragging ? 'none' : 'transform 0.2s ease',
+    };
+
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <div
+            ref={setNodeRef}
+            style={style}
+            {...listeners}
+            {...attributes}
+            className={`absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10 cursor-move hover:brightness-110 transition-all touch-none ${
+              isDragging ? 'opacity-50 ring-2 ring-primary scale-105' : ''
+            }`}
+          >
+            <div className="text-sm font-medium truncate">
+              {draggedTime && isDragging ? draggedTime : apt.appointment_time} - {apt.profiles?.full_name}
+            </div>
+            {apt.appointment_services?.[0]?.services && (
+              <div className="text-xs truncate opacity-90">
+                {apt.appointment_services[0].services.name}
+              </div>
+            )}
+            {isDragging && (
+              <div className="absolute inset-0 bg-white/10 flex items-center justify-center">
+                <span className="text-xs font-bold">Arraste para alterar horário</span>
+              </div>
+            )}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+            <ContextMenuItem onClick={() => handleReadyForService(apt.id)}>
+              ✓ Avisar que está pronto
+            </ContextMenuItem>
+          )}
+          {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+            <ContextMenuItem onClick={() => openRescheduleDialog(apt)}>
+              📅 Alterar
+            </ContextMenuItem>
+          )}
+          {apt.status !== 'cancelled' && (
+            <ContextMenuItem onClick={() => openCancelDialog(apt.id)} className="text-destructive">
+              ✕ Cancelar
+            </ContextMenuItem>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
+
   const renderDayView = () => {
     const timezone = 'America/Sao_Paulo';
     const zonedDate = toZonedTime(selectedDate, timezone);
@@ -258,20 +365,27 @@ export default function BusinessCalendar() {
     }
 
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h3 className="font-semibold">
-            {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
-          </h3>
-          <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h3 className="font-semibold">
+              {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+            </h3>
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
 
-        <div className="relative border rounded-lg overflow-hidden">
+          <div className="relative border rounded-lg overflow-hidden">
           <div className="grid grid-cols-[60px_1fr]">
             {/* Coluna de horários */}
             <div className="bg-muted/50 border-r">
@@ -327,7 +441,7 @@ export default function BusinessCalendar() {
                 </div>
               )}
               
-              {/* Agendamentos posicionados */}
+              {/* Agendamentos posicionados com Drag & Drop */}
               {dayAppointments.map(apt => {
                 const [hour, minute] = apt.appointment_time.split(':').map(Number);
                 const [endHour, endMinute] = apt.end_time.split(':').map(Number);
@@ -336,55 +450,29 @@ export default function BusinessCalendar() {
                 const endMinutes = endHour * 60 + endMinute;
                 const duration = endMinutes - startMinutes;
                 
-                const top = (startMinutes / 60) * 64; // 64px = altura de cada hora
+                const top = (startMinutes / 60) * 64;
                 const height = (duration / 60) * 64;
 
                 return (
-                  <ContextMenu key={apt.id}>
-                    <ContextMenuTrigger>
-                      <div
-                        className="absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10 cursor-pointer hover:brightness-110 transition-all"
-                        style={{
-                          top: `${top}px`,
-                          height: `${height}px`,
-                          backgroundColor: getStatusBgColor(apt.status),
-                          minHeight: '40px'
-                        }}
-                      >
-                        <div className="text-sm font-medium truncate">
-                          {apt.appointment_time} - {apt.profiles?.full_name}
-                        </div>
-                        {apt.appointment_services?.[0]?.services && (
-                          <div className="text-xs truncate opacity-90">
-                            {apt.appointment_services[0].services.name}
-                          </div>
-                        )}
-                      </div>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      {apt.status !== 'cancelled' && apt.status !== 'completed' && (
-                        <ContextMenuItem onClick={() => handleReadyForService(apt.id)}>
-                          ✓ Avisar que está pronto
-                        </ContextMenuItem>
-                      )}
-                      {apt.status !== 'cancelled' && apt.status !== 'completed' && (
-                        <ContextMenuItem onClick={() => openRescheduleDialog(apt)}>
-                          📅 Alterar
-                        </ContextMenuItem>
-                      )}
-                      {apt.status !== 'cancelled' && (
-                        <ContextMenuItem onClick={() => openCancelDialog(apt.id)} className="text-destructive">
-                          ✕ Cancelar
-                        </ContextMenuItem>
-                      )}
-                    </ContextMenuContent>
-                  </ContextMenu>
+                  <DraggableAppointmentCard
+                    key={apt.id}
+                    apt={apt}
+                    top={top}
+                    height={height}
+                    isDragging={activeId === apt.id}
+                    draggedTime={draggedTime}
+                    getStatusBgColor={getStatusBgColor}
+                    handleReadyForService={handleReadyForService}
+                    openRescheduleDialog={openRescheduleDialog}
+                    openCancelDialog={openCancelDialog}
+                  />
                 );
               })}
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </DndContext>
     );
   };
 
