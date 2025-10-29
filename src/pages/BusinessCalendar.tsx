@@ -19,6 +19,7 @@ import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensor
 import { useDraggableAppointment } from '@/hooks/useDraggableAppointment';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface Appointment {
   id: string;
@@ -47,6 +48,8 @@ export default function BusinessCalendar() {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [mobileMenuAppointment, setMobileMenuAppointment] = useState<Appointment | null>(null);
 
   // Drag & Drop sensors
   const sensors = useSensors(
@@ -287,6 +290,16 @@ export default function BusinessCalendar() {
     const showClientName = height >= 40;
     const isDisabled = apt.status === 'cancelled' || apt.status === 'completed';
 
+    const handleCardClick = (e: React.MouseEvent) => {
+      // Em mobile, abrir sheet ao invés de context menu
+      if (isMobile && !isDisabled && !isDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMobileMenuAppointment(apt);
+        setShowMobileMenu(true);
+      }
+    };
+
     return (
       <ContextMenu>
         <ContextMenuTrigger disabled={isDisabled}>
@@ -295,10 +308,11 @@ export default function BusinessCalendar() {
             style={style}
             {...(!isDisabled ? listeners : {})}
             {...(!isDisabled ? attributes : {})}
+            onClick={handleCardClick}
             className={`absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10 ${
               !isDisabled ? 'cursor-move' : 'cursor-default'
             } hover:brightness-110 transition-all ${
-              !isDisabled ? 'touch-none' : ''
+              !isDisabled && !isMobile ? 'touch-none' : ''
             } ${
               isDragging ? 'opacity-50 ring-2 ring-primary scale-105' : ''
             }`}
@@ -710,6 +724,58 @@ export default function BusinessCalendar() {
           }}
         />
       )}
+
+      {/* Mobile Menu Sheet */}
+      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+        <SheetContent side="bottom" className="rounded-t-xl">
+          <SheetHeader>
+            <SheetTitle>Opções do Agendamento</SheetTitle>
+          </SheetHeader>
+          {mobileMenuAppointment && (
+            <div className="space-y-2 pt-4">
+              <div className="pb-4 border-b">
+                <p className="font-semibold">{mobileMenuAppointment.profiles?.full_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {mobileMenuAppointment.appointment_time}
+                  {mobileMenuAppointment.appointment_services?.[0]?.services && 
+                    ` - ${mobileMenuAppointment.appointment_services[0].services.name}`
+                  }
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => {
+                  handleReadyForService(mobileMenuAppointment.id);
+                  setShowMobileMenu(false);
+                }}
+              >
+                ✓ Avisar que está pronto
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => {
+                  openRescheduleDialog(mobileMenuAppointment);
+                  setShowMobileMenu(false);
+                }}
+              >
+                📅 Alterar
+              </Button>
+              <Button
+                variant="destructive"
+                className="w-full justify-start"
+                onClick={() => {
+                  openCancelDialog(mobileMenuAppointment.id);
+                  setShowMobileMenu(false);
+                }}
+              >
+                ✕ Cancelar
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
