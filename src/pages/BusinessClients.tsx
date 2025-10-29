@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { maskPhoneInput, validatePhoneNumber } from "@/lib/phone-utils";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ContactPicker } from "@/components/ContactPicker";
+import { ServiceSelectionDialog } from "@/components/ServiceSelectionDialog";
 
 interface Client {
   id: string;
@@ -84,6 +85,7 @@ export default function BusinessClients() {
   const [quickBookingDialogOpen, setQuickBookingDialogOpen] = useState(false);
   const [quickBookingName, setQuickBookingName] = useState("");
   const [quickBookingPhone, setQuickBookingPhone] = useState("");
+  const [showServiceDialog, setShowServiceDialog] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -706,36 +708,31 @@ export default function BusinessClients() {
                 </div>
 
                 <div>
-                  <Label>Serviços * (selecione um ou mais)</Label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3 mt-2">
-                    {services.map((service) => (
-                      <div key={service.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`quick-${service.id}`}
-                          checked={selectedServices.includes(service.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedServices([...selectedServices, service.id]);
-                            } else {
-                              setSelectedServices(selectedServices.filter(id => id !== service.id));
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`quick-${service.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                        >
-                          {service.name} - R$ {service.price.toFixed(2)} ({service.duration_minutes} min)
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  <Label className="text-base font-semibold mb-3 block">Serviços</Label>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowServiceDialog(true)}
+                    className="w-full justify-start"
+                  >
+                    {selectedServices.length === 0 
+                      ? "Selecionar serviços" 
+                      : `${selectedServices.length} serviço${selectedServices.length > 1 ? 's' : ''} selecionado${selectedServices.length > 1 ? 's' : ''}`
+                    }
+                  </Button>
                   {selectedServices.length > 0 && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Duração total: {services
-                        .filter(s => selectedServices.includes(s.id))
-                        .reduce((sum, s) => sum + s.duration_minutes, 0)} minutos
-                    </p>
+                    <div className="mt-2 space-y-1">
+                      <div className="text-sm text-muted-foreground">
+                        {services
+                          .filter(s => selectedServices.includes(s.id))
+                          .map(s => s.name)
+                          .join(', ')}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Duração total: {services
+                          .filter(s => selectedServices.includes(s.id))
+                          .reduce((sum, s) => sum + s.duration_minutes, 0)} minutos
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -815,6 +812,18 @@ export default function BusinessClients() {
                   </Button>
                 </div>
               </div>
+
+              <ServiceSelectionDialog
+                open={showServiceDialog}
+                onOpenChange={setShowServiceDialog}
+                services={services}
+                selectedServices={selectedServices}
+                onConfirm={(serviceIds) => {
+                  setSelectedServices(serviceIds);
+                  setAvailableTimes([]);
+                  setSelectedTime('');
+                }}
+              />
             </DialogContent>
           </Dialog>
           </div>

@@ -61,7 +61,9 @@ export function RescheduleDialog({
   }, [open, businessId, appointmentId, currentDate, currentTime]);
 
   useEffect(() => {
-    if (selectedDate && business) {
+    if (selectedDate && business && selectedServices.length > 0) {
+      console.log('[RescheduleDialog] Generating slots for:', { selectedDate, selectedServices });
+      setAvailableSlots([]); // Limpar antes de gerar
       generateAvailableSlots();
     }
   }, [selectedDate, business, selectedServices]);
@@ -213,7 +215,10 @@ export function RescheduleDialog({
   };
 
   const handleServiceConfirm = (serviceIds: string[]) => {
+    console.log('[RescheduleDialog] Services confirmed:', serviceIds);
     setSelectedServices(serviceIds);
+    setAvailableSlots([]); // Limpar slots para forçar recálculo
+    setSelectedTime(''); // Limpar horário selecionado
   };
 
   const handleSubmit = async () => {

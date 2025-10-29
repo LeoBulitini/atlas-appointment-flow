@@ -52,13 +52,13 @@ export default function BusinessCalendar() {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 10,
+        distance: 5, // Reduzir para ativar mais fácil
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        delay: 200, // Reduzir delay
+        tolerance: 15, // Aumentar tolerância de movimento
       },
     })
   );
@@ -277,53 +277,66 @@ export default function BusinessCalendar() {
       top: `${top}px`,
       height: `${height}px`,
       backgroundColor: getStatusBgColor(apt.status),
-      minHeight: '40px',
+      minHeight: '50px',
       transform: CSS.Translate.toString(transform),
       transition: isDragging ? 'none' : 'transform 0.2s ease',
     };
 
+    // Determinar o que mostrar baseado na altura do card
+    const showFullDetails = height >= 60;
+    const showClientName = height >= 40;
+    const isDisabled = apt.status === 'cancelled' || apt.status === 'completed';
+
     return (
       <ContextMenu>
-        <ContextMenuTrigger>
+        <ContextMenuTrigger disabled={isDisabled}>
           <div
             ref={setNodeRef}
             style={style}
-            {...listeners}
-            {...attributes}
-            className={`absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10 cursor-move hover:brightness-110 transition-all touch-none ${
+            {...(!isDisabled ? listeners : {})}
+            {...(!isDisabled ? attributes : {})}
+            className={`absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10 ${
+              !isDisabled ? 'cursor-move' : 'cursor-default'
+            } hover:brightness-110 transition-all ${
+              !isDisabled ? 'touch-none' : ''
+            } ${
               isDragging ? 'opacity-50 ring-2 ring-primary scale-105' : ''
             }`}
           >
-            <div className="text-sm font-medium truncate">
-              {draggedTime && isDragging ? draggedTime : apt.appointment_time} - {apt.profiles?.full_name}
-            </div>
-            {apt.appointment_services?.[0]?.services && (
-              <div className="text-xs truncate opacity-90">
-                {apt.appointment_services[0].services.name}
+            {isDragging ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-lg font-bold">
+                  {draggedTime || apt.appointment_time}
+                </div>
               </div>
-            )}
-            {isDragging && (
-              <div className="absolute inset-0 bg-white/10 flex items-center justify-center">
-                <span className="text-xs font-bold">Arraste para alterar horário</span>
-              </div>
+            ) : (
+              <>
+                <div className="text-sm font-medium line-clamp-1">
+                  {apt.appointment_time}
+                  {showClientName && ` - ${apt.profiles?.full_name}`}
+                </div>
+                {showFullDetails && apt.appointment_services?.[0]?.services && (
+                  <div className="text-xs line-clamp-1 opacity-90">
+                    {apt.appointment_services[0].services.name}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
           {apt.status !== 'cancelled' && apt.status !== 'completed' && (
-            <ContextMenuItem onClick={() => handleReadyForService(apt.id)}>
-              ✓ Avisar que está pronto
-            </ContextMenuItem>
-          )}
-          {apt.status !== 'cancelled' && apt.status !== 'completed' && (
-            <ContextMenuItem onClick={() => openRescheduleDialog(apt)}>
-              📅 Alterar
-            </ContextMenuItem>
-          )}
-          {apt.status !== 'cancelled' && (
-            <ContextMenuItem onClick={() => openCancelDialog(apt.id)} className="text-destructive">
-              ✕ Cancelar
-            </ContextMenuItem>
+            <>
+              <ContextMenuItem onClick={() => handleReadyForService(apt.id)}>
+                ✓ Avisar que está pronto
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => openRescheduleDialog(apt)}>
+                📅 Alterar
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => openCancelDialog(apt.id)} className="text-destructive">
+                ✕ Cancelar
+              </ContextMenuItem>
+            </>
           )}
         </ContextMenuContent>
       </ContextMenu>

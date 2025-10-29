@@ -34,8 +34,10 @@ export const useDraggableAppointment = ({ appointments, onUpdate }: UseDraggable
     const [hours, minutes] = originalTime.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes;
     
-    // Each 12px = 5 minutes (approx 1 hour = 144px)
-    const minutesDelta = Math.round(deltaY / 12) * 5;
+    // Calendar uses 64px per hour → 5 minutes = 5.33px
+    const PIXELS_PER_HOUR = 64;
+    const PIXELS_PER_5_MINUTES = PIXELS_PER_HOUR / 12; // 5.33px
+    const minutesDelta = Math.round(deltaY / PIXELS_PER_5_MINUTES) * 5;
     const newTotalMinutes = Math.max(0, Math.min(1435, totalMinutes + minutesDelta)); // 0-23:55
     
     const newHours = Math.floor(newTotalMinutes / 60);
@@ -100,6 +102,13 @@ export const useDraggableAppointment = ({ appointments, onUpdate }: UseDraggable
     const deltaY = event.delta.y;
     const newStartTime = calculateNewTime(appointment.appointment_time, deltaY);
     
+    // No significant change
+    if (newStartTime === appointment.appointment_time) {
+      setActiveId(null);
+      setDraggedTime(null);
+      return;
+    }
+
     // Calculate duration and new end time
     const [startHours, startMinutes] = appointment.appointment_time.split(':').map(Number);
     const [endHours, endMinutes] = appointment.end_time.split(':').map(Number);
@@ -121,39 +130,48 @@ export const useDraggableAppointment = ({ appointments, onUpdate }: UseDraggable
       return;
     }
 
-    // No significant change
-    if (newStartTime === appointment.appointment_time) {
-      setActiveId(null);
-      setDraggedTime(null);
-      return;
-    }
+    // Show confirmation toast with buttons
+    const confirmUpdate = async () => {
+      try {
+        const { error } = await supabase
+          .from('appointments')
+          .update({
+            appointment_time: newStartTime,
+            end_time: newEndTime,
+          })
+          .eq('id', appointment.id);
 
-    try {
-      // Update appointment
-      const { error } = await supabase
-        .from('appointments')
-        .update({
-          appointment_time: newStartTime,
-          end_time: newEndTime,
-        })
-        .eq('id', appointment.id);
+        if (error) throw error;
 
-      if (error) throw error;
+        await supabase.functions.invoke('send-appointment-email', {
+          body: {
+            appointmentId: appointment.id,
+            type: 'rescheduled',
+          },
+        });
 
-      // Send notification email
-      await supabase.functions.invoke('send-appointment-email', {
-        body: {
-          appointmentId: appointment.id,
-          type: 'rescheduled',
+        toast.success('Horário alterado com sucesso!');
+        onUpdate();
+      } catch (error) {
+        console.error('Error updating appointment:', error);
+        toast.error('Erro ao alterar horário');
+      }
+    };
+
+    toast(
+      `Alterar de ${appointment.appointment_time} para ${newStartTime}?`,
+      {
+        action: {
+          label: 'Confirmar',
+          onClick: confirmUpdate,
         },
-      });
-
-      toast.success('Horário alterado com sucesso!');
-      onUpdate();
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-      toast.error('Erro ao alterar horário');
-    }
+        cancel: {
+          label: 'Cancelar',
+          onClick: () => onUpdate(),
+        },
+        duration: 10000,
+      }
+    );
 
     setActiveId(null);
     setDraggedTime(null);
