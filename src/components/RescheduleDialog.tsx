@@ -46,6 +46,7 @@ export function RescheduleDialog({
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [business, setBusiness] = useState<any>(null);
   const [showServiceDialog, setShowServiceDialog] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false); // Item 2: Controle do calendário
 
   useEffect(() => {
     if (open) {
@@ -381,6 +382,7 @@ export function RescheduleDialog({
 
           <div>
             <Label className="text-base font-semibold mb-3 block">Data</Label>
+            {/* Item 2: Não precisa de Popover aqui, mas mantemos consistência */}
             <Calendar
               mode="single"
               selected={selectedDate}

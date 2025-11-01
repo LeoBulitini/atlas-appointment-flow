@@ -55,16 +55,48 @@ export default function BusinessCalendar() {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 5, // Reduzir para ativar mais fácil
+        distance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200, // Reduzir delay
-        tolerance: 15, // Aumentar tolerância de movimento
+        delay: 150, // Item 4: Melhorar sensor de touch
+        tolerance: 10,
       },
     })
   );
+
+  const {
+    activeId,
+    draggedTime,
+    handleDragStart,
+    handleDragMove,
+    handleDragEnd,
+    handleDragCancel
+  } = useDraggableAppointment({
+    appointments,
+    onUpdate: fetchAppointments
+  });
+
+  // Item 7: Forçar viewMode "day" em mobile
+  useEffect(() => {
+    if (isMobile && viewMode !== 'day') {
+      setViewMode('day');
+    }
+  }, [isMobile]);
+
+  // Item 4: Prevenir scroll durante drag em mobile
+  useEffect(() => {
+    if (activeId) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [activeId]);
 
   useEffect(() => {
     checkAuth();
@@ -131,19 +163,6 @@ export default function BusinessCalendar() {
       setLoading(false);
     }
   };
-
-  // Drag & Drop hook (after fetchAppointments is declared)
-  const {
-    activeId,
-    draggedTime,
-    handleDragStart,
-    handleDragMove,
-    handleDragEnd,
-    handleDragCancel,
-  } = useDraggableAppointment({
-    appointments,
-    onUpdate: fetchAppointments,
-  });
 
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
@@ -280,15 +299,16 @@ export default function BusinessCalendar() {
       top: `${top}px`,
       height: `${height}px`,
       backgroundColor: getStatusBgColor(apt.status),
-      minHeight: '50px',
+      minHeight: '32px', // Item 3: Reduzir minHeight
       transform: CSS.Translate.toString(transform),
       transition: isDragging ? 'none' : 'transform 0.2s ease',
     };
 
-    // Determinar o que mostrar baseado na altura do card
-    const showFullDetails = height >= 60;
-    const showClientName = height >= 40;
     const isDisabled = apt.status === 'cancelled' || apt.status === 'completed';
+    
+    // Item 3: Pegar todos os serviços (não só o primeiro)
+    const serviceNames = apt.appointment_services?.map(as => as.services?.name).filter(Boolean) || [];
+    const servicesText = serviceNames.join(' • '); // Separar com bullet
 
     const handleCardClick = (e: React.MouseEvent) => {
       // Em mobile, abrir sheet ao invés de context menu
@@ -309,7 +329,7 @@ export default function BusinessCalendar() {
             {...(!isDisabled ? listeners : {})}
             {...(!isDisabled ? attributes : {})}
             onClick={handleCardClick}
-            className={`absolute left-2 right-2 rounded-lg p-2 text-white overflow-hidden shadow-md z-10 ${
+            className={`absolute left-2 right-2 rounded-lg px-2 py-1 text-white overflow-hidden shadow-md z-10 ${
               !isDisabled ? 'cursor-move' : 'cursor-default'
             } hover:brightness-110 transition-all ${
               !isDisabled && !isMobile ? 'touch-none' : ''
@@ -318,23 +338,27 @@ export default function BusinessCalendar() {
             }`}
           >
             {isDragging ? (
+              // Durante drag: apenas horário centralizado
               <div className="flex items-center justify-center h-full">
-                <div className="text-lg font-bold">
+                <div className="text-base font-bold">
                   {draggedTime || apt.appointment_time}
                 </div>
               </div>
             ) : (
-              <>
-                <div className="text-sm font-medium line-clamp-1">
-                  {apt.appointment_time}
-                  {showClientName && ` - ${apt.profiles?.full_name}`}
+              // Item 3: Estado normal - sempre mostrar todas as informações
+              <div className="space-y-0.5">
+                {/* Linha 1: Horário + Cliente */}
+                <div className="text-xs font-semibold truncate">
+                  {apt.appointment_time} - {apt.profiles?.full_name}
                 </div>
-                {showFullDetails && apt.appointment_services?.[0]?.services && (
-                  <div className="text-xs line-clamp-1 opacity-90">
-                    {apt.appointment_services[0].services.name}
+                
+                {/* Linha 2: Serviço(s) */}
+                {servicesText && (
+                  <div className="text-[10px] opacity-90 truncate">
+                    {servicesText}
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </ContextMenuTrigger>
@@ -363,7 +387,33 @@ export default function BusinessCalendar() {
     const dateStr = format(zonedDate, 'yyyy-MM-dd');
     const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled');
     
-    const hours = Array.from({ length: 24 }, (_, i) => i); // 0h às 23h
+    // Item 5: Gerar horários dinâmicos (1h antes/depois do funcionamento)
+    const hours = useMemo(() => {
+      if (!openingHours) return Array.from({ length: 24 }, (_, i) => i);
+      
+      const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()];
+      const daySchedule = openingHours[dayOfWeek];
+      
+      if (!daySchedule || !daySchedule.isOpen) {
+        return Array.from({ length: 24 }, (_, i) => i);
+      }
+      
+      // Extrair horas de abertura e fechamento
+      const openHour = parseInt(daySchedule.openTime.split(':')[0]);
+      const closeHour = parseInt(daySchedule.closeTime.split(':')[0]);
+      
+      // 1h antes e 1h depois
+      const startHour = Math.max(0, openHour - 1);
+      const endHour = Math.min(23, closeHour + 1);
+      
+      // Gerar array de horas
+      const hourArray = [];
+      for (let h = startHour; h <= endHour; h++) {
+        hourArray.push(h);
+      }
+      
+      return hourArray;
+    }, [openingHours, selectedDate]);
     
     // Verificar se a data selecionada é hoje
     const isToday = format(selectedDate, 'yyyy-MM-dd') === format(toZonedTime(new Date(), timezone), 'yyyy-MM-dd');
@@ -412,7 +462,8 @@ export default function BusinessCalendar() {
             </Button>
           </div>
 
-          <div className="relative border rounded-lg overflow-hidden">
+          {/* Item 6: Remover borda desnecessária */}
+          <div className="relative overflow-hidden">
           <div className="grid grid-cols-[60px_1fr]">
             {/* Coluna de horários */}
             <div className="bg-muted/50 border-r">
@@ -579,26 +630,31 @@ export default function BusinessCalendar() {
       </Button>
 
       <Card>
-        <CardHeader>
+        {/* Item 7: Esconder título em mobile */}
+        <CardHeader className="hidden sm:block">
           <CardTitle className="text-2xl font-bold">Calendário de Agendamentos</CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
-            <TabsList className={`grid w-full ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} mb-4`}>
-              <TabsTrigger value="day">Dia</TabsTrigger>
-              {!isMobile && <TabsTrigger value="week">Semana</TabsTrigger>}
-              {!isMobile && <TabsTrigger value="month">Mês</TabsTrigger>}
-            </TabsList>
+          {/* Item 7: Tabs de visualização - apenas desktop - Se mobile, mostrar só dia */}
+          {isMobile ? (
+            renderDayView()
+          ) : (
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="day">Dia</TabsTrigger>
+                <TabsTrigger value="week">Semana</TabsTrigger>
+                <TabsTrigger value="month">Mês</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="day">
-              {renderDayView()}
-            </TabsContent>
+              <TabsContent value="day">
+                {renderDayView()}
+              </TabsContent>
 
-            <TabsContent value="week">
-              {renderWeekView()}
-            </TabsContent>
+              <TabsContent value="week">
+                {renderWeekView()}
+              </TabsContent>
 
-            <TabsContent value="month">
+              <TabsContent value="month">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Button
@@ -693,6 +749,7 @@ export default function BusinessCalendar() {
               </div>
             </TabsContent>
           </Tabs>
+          )}
         </CardContent>
       </Card>
 

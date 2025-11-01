@@ -86,6 +86,7 @@ export default function BusinessClients() {
   const [quickBookingName, setQuickBookingName] = useState("");
   const [quickBookingPhone, setQuickBookingPhone] = useState("");
   const [showServiceDialog, setShowServiceDialog] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false); // Item 2: Controle do calendário
 
   useEffect(() => {
     fetchClients();
@@ -738,7 +739,8 @@ export default function BusinessClients() {
 
                 <div>
                   <Label>Data *</Label>
-                  <Popover>
+                  {/* Item 2: Controle do calendário para fechar ao clicar */}
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -755,7 +757,10 @@ export default function BusinessClients() {
                       <Calendar
                         mode="single"
                         selected={selectedDate}
-                        onSelect={setSelectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date);
+                          setCalendarOpen(false); // Fechar ao selecionar
+                        }}
                         disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                         initialFocus
                         locale={ptBR}
