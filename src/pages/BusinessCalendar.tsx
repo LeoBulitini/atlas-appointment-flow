@@ -323,12 +323,13 @@ export default function BusinessCalendar() {
       disabled: apt.status === 'cancelled' || apt.status === 'completed',
     });
 
+    // NÃO aplicar transform durante drag - manter card no lugar original até confirmação
     const style = {
       top: `${top}px`,
       height: `${height}px`,
       backgroundColor: getStatusBgColor(apt.status),
-      minHeight: '32px', // Item 3: Reduzir minHeight
-      transform: CSS.Translate.toString(transform),
+      minHeight: '40px', // Aumentar minHeight para evitar cortar texto
+      transform: isDragging ? 'none' : CSS.Translate.toString(transform),
       transition: isDragging ? 'none' : 'transform 0.2s ease',
     };
 
@@ -373,16 +374,16 @@ export default function BusinessCalendar() {
                 </div>
               </div>
             ) : (
-              // Item 3: Estado normal - sempre mostrar todas as informações
+              // Item 3: Estado normal - sempre mostrar todas as informações SEM cortar texto
               <div className="space-y-0.5">
                 {/* Linha 1: Horário + Cliente */}
-                <div className="text-xs font-semibold truncate">
+                <div className="text-xs font-semibold line-clamp-1">
                   {apt.appointment_time} - {apt.profiles?.full_name}
                 </div>
                 
                 {/* Linha 2: Serviço(s) */}
                 {servicesText && (
-                  <div className="text-[10px] opacity-90 truncate">
+                  <div className="text-[10px] opacity-90 line-clamp-2">
                     {servicesText}
                   </div>
                 )}
@@ -462,8 +463,8 @@ export default function BusinessCalendar() {
             </Button>
           </div>
 
-          {/* Item 6: Remover borda desnecessária */}
-          <div className="relative overflow-hidden">
+          {/* Item 6 & Layout: Grid flush com extremidades da tela no mobile */}
+          <div className={`relative overflow-hidden ${isMobile ? '-mx-4' : ''}`}>
           <div className="grid grid-cols-[60px_1fr]">
             {/* Coluna de horários */}
             <div className="bg-muted/50 border-r">

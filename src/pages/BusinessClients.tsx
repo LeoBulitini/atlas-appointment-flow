@@ -956,42 +956,37 @@ export default function BusinessClients() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
-                <Label>Serviços * (selecione um ou mais)</Label>
-                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3 mt-2">
-                  {services.map((service) => (
-                    <div key={service.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={service.id}
-                        checked={selectedServices.includes(service.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedServices([...selectedServices, service.id]);
-                          } else {
-                            setSelectedServices(selectedServices.filter(id => id !== service.id));
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor={service.id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                      >
-                        {service.name} - R$ {service.price.toFixed(2)} ({service.duration_minutes} min)
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                <Label className="text-base font-semibold mb-3 block">Serviços</Label>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowServiceDialog(true)}
+                  className="w-full justify-start"
+                >
+                  {selectedServices.length === 0 
+                    ? "Selecionar serviços" 
+                    : `${selectedServices.length} serviço${selectedServices.length > 1 ? 's' : ''} selecionado${selectedServices.length > 1 ? 's' : ''}`
+                  }
+                </Button>
                 {selectedServices.length > 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Duração total: {services
-                      .filter(s => selectedServices.includes(s.id))
-                      .reduce((sum, s) => sum + s.duration_minutes, 0)} minutos
-                  </p>
+                  <div className="mt-2 space-y-1">
+                    <div className="text-sm text-muted-foreground">
+                      {services
+                        .filter(s => selectedServices.includes(s.id))
+                        .map(s => s.name)
+                        .join(', ')}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Duração total: {services
+                        .filter(s => selectedServices.includes(s.id))
+                        .reduce((sum, s) => sum + s.duration_minutes, 0)} minutos
+                    </p>
+                  </div>
                 )}
               </div>
 
               <div>
                 <Label>Data *</Label>
-                <Popover>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -1008,7 +1003,10 @@ export default function BusinessClients() {
                     <Calendar
                       mode="single"
                       selected={selectedDate}
-                      onSelect={setSelectedDate}
+                      onSelect={(date) => {
+                        setSelectedDate(date);
+                        setCalendarOpen(false);
+                      }}
                       disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                       initialFocus
                       locale={ptBR}
@@ -1067,6 +1065,23 @@ export default function BusinessClients() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <ServiceSelectionDialog 
+          open={showServiceDialog}
+          services={services.map(s => ({
+            id: s.id,
+            name: s.name,
+            duration_minutes: s.duration_minutes,
+            price: s.price,
+            description: `R$ ${s.price.toFixed(2)} (${s.duration_minutes} min)`
+          }))}
+          selectedServices={selectedServices}
+          onConfirm={(selected) => {
+            setSelectedServices(selected);
+            setShowServiceDialog(false);
+          }}
+          onOpenChange={setShowServiceDialog}
+        />
       </div>
     </div>
   );
