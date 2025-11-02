@@ -164,6 +164,34 @@ export default function BusinessCalendar() {
     };
   }, [activeId]);
 
+  // Item 5: Calcular horários dinâmicos (1h antes/depois do funcionamento)
+  const hours = useMemo(() => {
+    if (!openingHours) return Array.from({ length: 24 }, (_, i) => i);
+    
+    const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()];
+    const daySchedule = openingHours[dayOfWeek];
+    
+    if (!daySchedule || !daySchedule.isOpen) {
+      return Array.from({ length: 24 }, (_, i) => i);
+    }
+    
+    // Extrair horas de abertura e fechamento
+    const openHour = parseInt(daySchedule.openTime.split(':')[0]);
+    const closeHour = parseInt(daySchedule.closeTime.split(':')[0]);
+    
+    // 1h antes e 1h depois
+    const startHour = Math.max(0, openHour - 1);
+    const endHour = Math.min(23, closeHour + 1);
+    
+    // Gerar array de horas
+    const hourArray = [];
+    for (let h = startHour; h <= endHour; h++) {
+      hourArray.push(h);
+    }
+    
+    return hourArray;
+  }, [openingHours, selectedDate]);
+
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     return appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled');
@@ -386,34 +414,6 @@ export default function BusinessCalendar() {
     const zonedDate = toZonedTime(selectedDate, timezone);
     const dateStr = format(zonedDate, 'yyyy-MM-dd');
     const dayAppointments = appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled');
-    
-    // Item 5: Gerar horários dinâmicos (1h antes/depois do funcionamento)
-    const hours = useMemo(() => {
-      if (!openingHours) return Array.from({ length: 24 }, (_, i) => i);
-      
-      const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()];
-      const daySchedule = openingHours[dayOfWeek];
-      
-      if (!daySchedule || !daySchedule.isOpen) {
-        return Array.from({ length: 24 }, (_, i) => i);
-      }
-      
-      // Extrair horas de abertura e fechamento
-      const openHour = parseInt(daySchedule.openTime.split(':')[0]);
-      const closeHour = parseInt(daySchedule.closeTime.split(':')[0]);
-      
-      // 1h antes e 1h depois
-      const startHour = Math.max(0, openHour - 1);
-      const endHour = Math.min(23, closeHour + 1);
-      
-      // Gerar array de horas
-      const hourArray = [];
-      for (let h = startHour; h <= endHour; h++) {
-        hourArray.push(h);
-      }
-      
-      return hourArray;
-    }, [openingHours, selectedDate]);
     
     // Verificar se a data selecionada é hoje
     const isToday = format(selectedDate, 'yyyy-MM-dd') === format(toZonedTime(new Date(), timezone), 'yyyy-MM-dd');
