@@ -323,13 +323,13 @@ export default function BusinessCalendar() {
       disabled: apt.status === 'cancelled' || apt.status === 'completed',
     });
 
-    // NÃO aplicar transform durante drag - manter card no lugar original até confirmação
+    // Aplicar transform durante drag para feedback visual
     const style = {
       top: `${top}px`,
       height: `${height}px`,
       backgroundColor: getStatusBgColor(apt.status),
-      minHeight: '40px', // Aumentar minHeight para evitar cortar texto
-      transform: isDragging ? 'none' : CSS.Translate.toString(transform),
+      minHeight: '40px',
+      transform: CSS.Translate.toString(transform),
       transition: isDragging ? 'none' : 'transform 0.2s ease',
     };
 

@@ -84,10 +84,10 @@ export const useDraggableAppointment = ({ appointments, onUpdate }: UseDraggable
     const appointment = appointments.find(apt => apt.id === activeId);
     if (!appointment) return;
 
-    // NÃO atualizar draggedTime durante o movimento - manter card no lugar original
-    // const deltaY = event.delta.y;
-    // const newTime = calculateNewTime(appointment.appointment_time, deltaY);
-    // setDraggedTime(newTime);
+    // Atualizar draggedTime durante o movimento para feedback visual
+    const deltaY = event.delta.y;
+    const newTime = calculateNewTime(appointment.appointment_time, deltaY);
+    setDraggedTime(newTime);
   }, [activeId, appointments]);
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
