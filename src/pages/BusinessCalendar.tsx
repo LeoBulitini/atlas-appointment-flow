@@ -66,47 +66,9 @@ export default function BusinessCalendar() {
     })
   );
 
-  const {
-    activeId,
-    draggedTime,
-    handleDragStart,
-    handleDragMove,
-    handleDragEnd,
-    handleDragCancel
-  } = useDraggableAppointment({
-    appointments,
-    onUpdate: fetchAppointments
-  });
-
-  // Item 7: Forçar viewMode "day" em mobile
-  useEffect(() => {
-    if (isMobile && viewMode !== 'day') {
-      setViewMode('day');
-    }
-  }, [isMobile]);
-
-  // Item 4: Prevenir scroll durante drag em mobile
-  useEffect(() => {
-    if (activeId) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [activeId]);
-
   useEffect(() => {
     checkAuth();
   }, []);
-
-  useEffect(() => {
-    if (businessId) {
-      fetchAppointments();
-    }
-  }, [businessId, currentMonth]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -163,6 +125,44 @@ export default function BusinessCalendar() {
       setLoading(false);
     }
   };
+
+  const {
+    activeId,
+    draggedTime,
+    handleDragStart,
+    handleDragMove,
+    handleDragEnd,
+    handleDragCancel
+  } = useDraggableAppointment({
+    appointments,
+    onUpdate: fetchAppointments
+  });
+
+  useEffect(() => {
+    if (businessId) {
+      fetchAppointments();
+    }
+  }, [businessId, currentMonth]);
+
+  // Item 7: Forçar viewMode "day" em mobile
+  useEffect(() => {
+    if (isMobile && viewMode !== 'day') {
+      setViewMode('day');
+    }
+  }, [isMobile]);
+
+  // Item 4: Prevenir scroll durante drag em mobile
+  useEffect(() => {
+    if (activeId) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [activeId]);
 
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
