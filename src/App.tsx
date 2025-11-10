@@ -8,6 +8,7 @@ import { InstallPWA } from "./components/InstallPWA";
 import { ScrollToTop } from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import CompleteProfile from "./pages/CompleteProfile";
 import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 import SelectAccountType from "./pages/SelectAccountType";
@@ -44,6 +45,7 @@ const App = () => (
           <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/google-callback" element={<GoogleAuthCallback />} />
           <Route path="/select-account-type" element={<SelectAccountType />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
