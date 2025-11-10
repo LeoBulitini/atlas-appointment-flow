@@ -17,19 +17,43 @@ const ResetPassword = () => {
   const [isValidToken, setIsValidToken] = useState(false);
 
   useEffect(() => {
-    // Verificar se há um token de recovery na URL
-    supabase.auth.onAuthStateChange((event) => {
+    // Verificar se há um token de recovery na URL (hash fragment)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const type = hashParams.get('type');
+    
+    console.log('Hash params:', { accessToken: !!accessToken, type });
+    
+    if (accessToken && type === 'recovery') {
+      console.log('Token de recovery detectado na URL');
+      setIsValidToken(true);
+    }
+
+    // Configurar listener de mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event);
+      
       if (event === "PASSWORD_RECOVERY") {
+        console.log('PASSWORD_RECOVERY event detectado');
+        setIsValidToken(true);
+      }
+      
+      if (session?.user && type === 'recovery') {
         setIsValidToken(true);
       }
     });
 
     // Verificar sessão atual
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      console.log('Sessão atual:', !!session);
+      if (session && type === 'recovery') {
         setIsValidToken(true);
       }
     });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
