@@ -373,39 +373,6 @@ export type Database = {
           },
         ]
       }
-      error_logs: {
-        Row: {
-          created_at: string
-          error_context: Json | null
-          error_message: string
-          error_stack: string | null
-          id: string
-          page_url: string
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          error_context?: Json | null
-          error_message: string
-          error_stack?: string | null
-          id?: string
-          page_url: string
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          error_context?: Json | null
-          error_message?: string
-          error_stack?: string | null
-          id?: string
-          page_url?: string
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       financial_transactions: {
         Row: {
           amount: number
