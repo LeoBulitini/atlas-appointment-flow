@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Calendar, Clock, CreditCard, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,31 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
   const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
+  const [showButton, setShowButton] = useState(true);
 
-  if (!isMobile) return null;
+  // Verificar configuração do botão
+  useEffect(() => {
+    const checkButtonSetting = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("show_quick_actions_button")
+        .eq("owner_id", user.id)
+        .single();
+
+      if (businessData) {
+        setShowButton(businessData.show_quick_actions_button !== false);
+      }
+    };
+
+    if (isMobile) {
+      checkButtonSetting();
+    }
+  }, [isMobile]);
+
+  if (!isMobile || !showButton) return null;
 
   const handleScheduleClick = () => {
     setShowMenu(false);

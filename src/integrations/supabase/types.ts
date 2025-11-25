@@ -291,6 +291,7 @@ export type Database = {
           phone: string
           postal_code: string | null
           price_range: string | null
+          show_quick_actions_button: boolean | null
           slug: string | null
           state: string
           subscription_id: string | null
@@ -319,6 +320,7 @@ export type Database = {
           phone: string
           postal_code?: string | null
           price_range?: string | null
+          show_quick_actions_button?: boolean | null
           slug?: string | null
           state: string
           subscription_id?: string | null
@@ -347,6 +349,7 @@ export type Database = {
           phone?: string
           postal_code?: string | null
           price_range?: string | null
+          show_quick_actions_button?: boolean | null
           slug?: string | null
           state?: string
           subscription_id?: string | null
