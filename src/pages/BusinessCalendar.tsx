@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -463,13 +462,13 @@ export default function BusinessCalendar() {
             </Button>
           </div>
 
-          {/* Item 6 & Layout: Grid flush com extremidades da tela no mobile */}
-          <div className={`relative overflow-hidden ${isMobile ? '-mx-4' : ''}`}>
+          {/* Grid de visualização do dia */}
+          <div className="relative overflow-hidden rounded-lg border">
           <div className="grid grid-cols-[60px_1fr]">
             {/* Coluna de horários */}
-            <div className="bg-muted/50 border-r">
+            <div className="bg-muted/30">
               {hours.map(hour => (
-                <div key={hour} className="relative h-16 border-b">
+                <div key={hour} className="relative h-16 border-b border-border/40">
                   <div className="flex flex-col items-center justify-start pt-1 text-xs text-muted-foreground">
                     <span>{hour.toString().padStart(2, '0')}:00</span>
                   </div>
@@ -492,20 +491,20 @@ export default function BusinessCalendar() {
               {hours.map(hour => {
                 const isInactive = isHourInactive(hour, dayOfWeek);
                 return (
-                  <div key={hour} className="relative h-16 border-b">
+                  <div key={hour} className="relative h-16 border-b border-border/40">
                     {/* Overlay para horário inativo com padrão de riscos */}
                     {isInactive && (
                       <div 
-                        className="absolute inset-0 bg-muted/30 z-5"
+                        className="absolute inset-0 bg-muted/20 z-5"
                         style={{
-                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.05) 10px, rgba(0,0,0,0.05) 20px)'
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px)'
                         }}
                       />
                     )}
                     {/* Linhas tracejadas para 15, 30 e 45 minutos */}
-                    <div className="absolute top-1/4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
-                    <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
-                    <div className="absolute top-3/4 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                    <div className="absolute top-1/4 left-0 right-0 border-t border-dashed border-muted-foreground/10" />
+                    <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-muted-foreground/10" />
+                    <div className="absolute top-3/4 left-0 right-0 border-t border-dashed border-muted-foreground/10" />
                   </div>
                 );
               })}
@@ -583,14 +582,14 @@ export default function BusinessCalendar() {
             const isToday = isSameDay(day, new Date());
 
             return (
-              <Card key={dateStr} className={isToday ? 'border-primary' : ''}>
-                <CardHeader className="p-3">
-                  <CardTitle className="text-sm text-center">
+              <div key={dateStr} className={`border rounded-lg ${isToday ? 'border-primary border-2' : 'border-border'}`}>
+                <div className="p-3 border-b">
+                  <div className="text-sm text-center font-medium">
                     {format(day, 'EEE', { locale: ptBR })}
                     <div className="text-lg">{format(day, 'd')}</div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 space-y-1">
+                  </div>
+                </div>
+                <div className="p-2 space-y-1">
                   {dayAppointments.slice(0, 3).map(apt => (
                     <div key={apt.id} className="text-xs p-1 rounded" style={{ backgroundColor: getStatusBgColor(apt.status) + '20' }}>
                       <div className="font-medium truncate">{apt.appointment_time}</div>
@@ -602,8 +601,8 @@ export default function BusinessCalendar() {
                       +{dayAppointments.length - 3} mais
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -624,18 +623,17 @@ export default function BusinessCalendar() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <Button variant="ghost" onClick={() => navigate("/dashboard/business")} className="mb-4">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Voltar ao Dashboard
+    <div className="min-h-screen bg-background p-2 md:p-6">
+      <Button 
+        variant="ghost" 
+        size="icon"
+        onClick={() => navigate("/dashboard/business")} 
+        className="mb-3"
+      >
+        <ArrowLeft className="h-5 w-5" />
       </Button>
 
-      <Card>
-        {/* Item 7: Esconder título em mobile */}
-        <CardHeader className="hidden sm:block">
-          <CardTitle className="text-2xl font-bold">Calendário de Agendamentos</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-card rounded-lg p-3 md:p-6 shadow-sm border">
           {/* Item 7: Tabs de visualização - apenas desktop - Se mobile, mostrar só dia */}
           {isMobile ? (
             renderDayView()
@@ -751,8 +749,7 @@ export default function BusinessCalendar() {
             </TabsContent>
           </Tabs>
           )}
-        </CardContent>
-      </Card>
+      </div>
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent>
