@@ -3,6 +3,25 @@ import { ThemeProvider } from "next-themes";
 import App from "./App.tsx";
 import "./index.css";
 
+// Registrar o Service Worker para PWA
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        console.log("Service Worker registrado:", registration);
+        
+        // Verifica por atualizações a cada 60 segundos
+        setInterval(() => {
+          registration.update();
+        }, 60000);
+      })
+      .catch((error) => {
+        console.error("Erro ao registrar Service Worker:", error);
+      });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
     <App />

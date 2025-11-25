@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Workbox } from "workbox-window";
 import { RefreshCw, Sparkles } from "lucide-react";
 import {
   AlertDialog,
@@ -13,38 +12,44 @@ import {
 
 export const UpdatePWA = () => {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
-  const [wb, setWb] = useState<Workbox | null>(null);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator && window.location.hostname !== "localhost") {
-      const workbox = new Workbox("/sw.js");
-
+    if ("serviceWorker" in navigator) {
       // Detecta quando há uma nova versão esperando
-      workbox.addEventListener("waiting", () => {
-        setShowUpdateDialog(true);
-      });
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          
+          if (newWorker) {
+            newWorker.addEventListener("statechange", () => {
+              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                // Nova versão disponível
+                setWaitingWorker(newWorker);
+                setShowUpdateDialog(true);
+              }
+            });
+          }
+        });
 
-      // Detecta quando o SW foi instalado pela primeira vez
-      workbox.addEventListener("installed", (event) => {
-        if (!event.isUpdate) {
-          console.log("Service Worker instalado pela primeira vez");
+        // Verifica se já existe um SW esperando
+        if (registration.waiting) {
+          setWaitingWorker(registration.waiting);
+          setShowUpdateDialog(true);
         }
       });
 
-      workbox.register();
-      setWb(workbox);
+      // Detecta quando o novo SW assume o controle
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        window.location.reload();
+      });
     }
   }, []);
 
   const handleUpdate = () => {
-    if (wb) {
+    if (waitingWorker) {
       // Envia mensagem para o SW pular a espera
-      wb.messageSkipWaiting();
-      
-      // Recarrega a página quando o novo SW assumir
-      wb.addEventListener("controlling", () => {
-        window.location.reload();
-      });
+      waitingWorker.postMessage({ type: "SKIP_WAITING" });
     }
   };
 
