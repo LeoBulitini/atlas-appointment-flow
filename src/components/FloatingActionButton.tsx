@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar, Clock, CreditCard, CalendarDays } from "lucide-react";
+import { Plus, Calendar, Clock, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -36,10 +36,24 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
       }
     };
 
-    if (isMobile) {
-      checkButtonSetting();
-    }
-  }, [isMobile]);
+    checkButtonSetting();
+    
+    // Recarregar quando a rota mudar
+    const channel = supabase
+      .channel('business_changes')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'businesses' 
+      }, () => {
+        checkButtonSetting();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   if (!isMobile || !showButton) return null;
 
@@ -91,10 +105,6 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
     }
   };
 
-  const handleCalendarClick = () => {
-    setShowMenu(false);
-    navigate("/business/calendar");
-  };
 
   return (
     <>
@@ -124,19 +134,6 @@ export default function FloatingActionButton({ onQuickBooking }: FloatingActionB
                 <div className="font-semibold">Agendar S/ Cliente</div>
                 <div className="text-sm text-muted-foreground">
                   Criar agendamento rápido
-                </div>
-              </div>
-            </Button>
-            <Button
-              onClick={handleCalendarClick}
-              className="w-full justify-start text-left h-auto py-4"
-              variant="outline"
-            >
-              <CalendarDays className="mr-3 h-5 w-5" />
-              <div>
-                <div className="font-semibold">Ver Calendário</div>
-                <div className="text-sm text-muted-foreground">
-                  Visualizar todos os agendamentos
                 </div>
               </div>
             </Button>
