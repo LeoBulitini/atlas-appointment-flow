@@ -14,6 +14,13 @@ export const useAppVersion = () => {
 
   const checkVersion = async () => {
     try {
+      // Se está no processo de atualização, não faz nada
+      if (sessionStorage.getItem('atlas_updating')) {
+        sessionStorage.removeItem('atlas_updating');
+        setIsLoading(false);
+        return;
+      }
+
       // Busca versão do servidor
       const { data, error } = await supabase
         .from("app_settings")
@@ -46,21 +53,23 @@ export const useAppVersion = () => {
     }
   };
 
-  const handleUpdate = () => {
-    if (serverVersion) {
-      // Atualiza versão local
-      localStorage.setItem(LOCAL_VERSION_KEY, serverVersion);
-      
-      // Limpa caches e recarrega
-      if ('caches' in window) {
-        caches.keys().then(names => {
-          names.forEach(name => caches.delete(name));
-        });
-      }
-      
-      // Força reload completo (ignora cache)
-      window.location.reload();
+  const handleUpdate = async () => {
+    if (!serverVersion) return;
+    
+    // Marca que o usuário confirmou a atualização
+    sessionStorage.setItem('atlas_updating', 'true');
+    
+    // Atualiza versão local
+    localStorage.setItem(LOCAL_VERSION_KEY, serverVersion);
+    
+    // Limpa caches
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
     }
+    
+    // Força reload completo (ignora cache)
+    window.location.reload();
   };
 
   return {
