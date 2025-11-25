@@ -146,7 +146,7 @@ const BusinessDashboard = () => {
 
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
-        .select("id, name, logo_url, is_active, view_count, slug, auto_redirect_to_calendar")
+        .select("id, name, logo_url, is_active, view_count, slug, auto_redirect_to_calendar, auto_confirm_appointments, show_quick_actions_button")
         .eq("owner_id", user.id)
         .single();
 
@@ -537,13 +537,23 @@ const BusinessDashboard = () => {
   }, [appointments, dateRange]);
 
   const { completedAppointments, totalRevenue, cancelledAppointments, pendingCount } = useMemo(() => {
+    // Filtrar apenas agendamentos do mês atual
+    const now = new Date();
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    const currentMonthAppointments = appointments.filter(app => {
+      const appDate = parseISO(app.appointment_date);
+      return appDate >= startOfCurrentMonth && appDate <= endOfCurrentMonth;
+    });
+    
     // Usar Set para status checks O(1)
     const completedSet = new Set<string>();
     const cancelledSet = new Set<string>();
     let pending = 0;
     let revenue = 0;
     
-    appointments.forEach(app => {
+    currentMonthAppointments.forEach(app => {
       if (app.status === "completed") {
         completedSet.add(app.id);
         const appointmentTotal = app.appointment_services?.reduce((sum: number, as: any) => 
@@ -556,8 +566,8 @@ const BusinessDashboard = () => {
       }
     });
     
-    const completed = appointments.filter(app => completedSet.has(app.id));
-    const cancelled = filteredAppointments.filter((app) => app.status === "cancelled");
+    const completed = currentMonthAppointments.filter(app => completedSet.has(app.id));
+    const cancelled = currentMonthAppointments.filter((app) => app.status === "cancelled");
     
     return { 
       completedAppointments: completed, 
@@ -565,7 +575,7 @@ const BusinessDashboard = () => {
       cancelledAppointments: cancelled,
       pendingCount: pending
     };
-  }, [appointments, filteredAppointments]);
+  }, [appointments]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
@@ -805,27 +815,6 @@ const BusinessDashboard = () => {
           </div>
         </div>
 
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Power className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-semibold">Status da Empresa</p>
-                  <p className="text-sm text-muted-foreground">
-                    {business.is_active 
-                      ? "Sua empresa está ativa e visível no Explorar" 
-                      : "Sua empresa está desativada e não aparece no Explorar"}
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={business.is_active}
-                onCheckedChange={handleToggleBusinessStatus}
-              />
-            </div>
-          </CardContent>
-        </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Card>
@@ -838,15 +827,17 @@ const BusinessDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{pendingCount}</div>
-            </CardContent>
-          </Card>
+          {!business.auto_confirm_appointments && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{pendingCount}</div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

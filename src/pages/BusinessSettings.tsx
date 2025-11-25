@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Edit, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit, ChevronDown, Power } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SpecialHoursManager } from "@/components/SpecialHoursManager";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -43,6 +43,8 @@ interface Business {
   opening_hours: any;
   auto_confirm_appointments?: boolean;
   auto_redirect_to_calendar?: boolean;
+  is_active?: boolean;
+  show_quick_actions_button?: boolean;
   logo_url?: string;
   payment_methods?: string[];
 }
@@ -1013,6 +1015,93 @@ export default function BusinessSettings() {
                       <Save className="mr-2 h-4 w-4" />
                       Salvar Métodos
                     </Button>
+                  </div>
+
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Power className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <Label>Status da Empresa</Label>
+                          <p className="text-sm text-muted-foreground">
+                            {business.is_active 
+                              ? "Sua empresa está ativa e visível no Explorar" 
+                              : "Sua empresa está desativada e não aparece no Explorar"}
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={business.is_active || false}
+                        onCheckedChange={async (checked) => {
+                          // Se tentar desativar, verificar se há agendamentos pendentes ou confirmados
+                          if (!checked) {
+                            const { data: appointments } = await supabase
+                              .from("appointments")
+                              .select("id, status")
+                              .eq("business_id", business.id)
+                              .in("status", ["pending", "confirmed"]);
+
+                            if (appointments && appointments.length > 0) {
+                              toast({
+                                variant: "destructive",
+                                title: "Não é possível desativar",
+                                description: `Você tem ${appointments.length} agendamento(s) pendente(s) ou confirmado(s). Cancele-os ou aguarde a conclusão antes de desativar.`,
+                              });
+                              return;
+                            }
+                          }
+
+                          setLoading(true);
+                          const { error } = await supabase
+                            .from("businesses")
+                            .update({ is_active: checked })
+                            .eq("id", business.id);
+                          
+                          if (error) {
+                            toast({ title: "Erro ao atualizar status", variant: "destructive" });
+                          } else {
+                            toast({ 
+                              title: checked ? "Empresa ativada!" : "Empresa desativada",
+                              description: checked
+                                ? "Sua empresa agora está visível no Explorar e pode receber agendamentos."
+                                : "Sua empresa foi desativada e não aparece mais no Explorar."
+                            });
+                            fetchBusinessData();
+                          }
+                          setLoading(false);
+                        }}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <Label>Botão de Ações Rápidas (Mobile)</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Exibir botão flutuante de ações rápidas no modo mobile
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={business.show_quick_actions_button !== false}
+                        onCheckedChange={async (checked) => {
+                          setLoading(true);
+                          const { error } = await supabase
+                            .from("businesses")
+                            .update({ show_quick_actions_button: checked })
+                            .eq("id", business.id);
+                          
+                          if (error) {
+                            toast({ title: "Erro ao atualizar configuração", variant: "destructive" });
+                          } else {
+                            toast({ title: "Configuração atualizada!" });
+                            fetchBusinessData();
+                          }
+                          setLoading(false);
+                        }}
+                        disabled={loading}
+                      />
+                      <Label>Mostrar botão de ações rápidas</Label>
+                    </div>
                   </div>
 
                   <div className="space-y-2 p-4 border rounded-lg">
