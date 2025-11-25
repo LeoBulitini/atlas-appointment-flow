@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import FloatingActionButton from "./FloatingActionButton";
+import BottomNavigation from "./BottomNavigation";
 
 interface BusinessLayoutProps {
   children: ReactNode;
@@ -8,7 +9,6 @@ interface BusinessLayoutProps {
 }
 
 export default function BusinessLayout({ children, onQuickBooking }: BusinessLayoutProps) {
-  const location = useLocation();
   const navigate = useNavigate();
 
   const handleQuickBooking = () => {
@@ -23,8 +23,11 @@ export default function BusinessLayout({ children, onQuickBooking }: BusinessLay
 
   return (
     <>
-      {children}
+      <div className="pb-20 md:pb-0">
+        {children}
+      </div>
       <FloatingActionButton onQuickBooking={handleQuickBooking} />
+      <BottomNavigation />
     </>
   );
 }
