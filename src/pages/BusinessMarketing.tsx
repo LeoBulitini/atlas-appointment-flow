@@ -317,44 +317,6 @@ Me chama que vou te contar! 💝`,
           </CardContent>
         </Card>
 
-        {/* Tips Section */}
-        <Collapsible className="mb-6">
-          <Card>
-            <CollapsibleTrigger className="w-full">
-              <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Info className="h-5 w-5" />
-                    Dicas de Uso
-                  </div>
-                  <ChevronDown className="h-5 w-5 transition-transform ui-expanded:rotate-180" />
-                </CardTitle>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="space-y-4 pt-0">
-                <div>
-                  <h4 className="font-semibold mb-2">📝 Como usar</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Para mensagens que precisam de informações específicas (datas, horários, serviços), o sistema irá solicitar que você selecione ou preencha os dados necessários antes de copiar ou enviar.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">⏰ Melhores horários</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Evite enviar mensagens muito cedo (antes das 9h) ou muito tarde (após 21h). O melhor horário é entre 10h e 19h.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">🎯 Frequência recomendada</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Não envie mensagens todos os dias para o mesmo cliente. Respeite um intervalo de pelo menos 1 semana entre contatos promocionais.
-                  </p>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
 
         {/* Templates Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
